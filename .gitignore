@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.coverage
+.env
+test.db
+*.sqlite3
+.idea/
+*.log
+htmlcov/
+dist/
+build/
