@@ -33,9 +33,6 @@ def get_password_hash(password: str) -> str:
     В базе данных нельзя хранить пароль в открытом виде,
     поэтому сохраняется только его хэш.
     """
-    print("PASSWORD VALUE:", password)
-    print("PASSWORD TYPE:", type(password))
-    print("PASSWORD LENGTH:", len(str(password)))
     return pwd_context.hash(password)
 
 def create_token(subject: str, expires_minutes: int, token_type: str) -> str:
