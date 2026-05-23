@@ -1,20 +1,27 @@
 # ToDo App
 
-Backend API для приложения управления задачами.
+Backend API и Frontend для приложения управления задачами.
 
 ## Описание
 
-**ToDo App** — REST API для:
+**ToDo App** — это полноценное веб-приложение для управления задачами, состоящее из:
 
-- регистрации и авторизации пользователей;
-- управления категориями;
-- создания, редактирования, удаления и просмотра задач;
-- изменения статуса задач;
-- получения прогноза времени выполнения задачи;
-- проверки состояния приложения через health-check.
+- **REST API** (Backend) для:
+    - регистрации и авторизации пользователей;
+    - управления категориями;
+    - создания, редактирования, удаления и просмотра задач;
+    - изменения статуса задач;
+    - получения прогноза времени выполнения задачи;
+    - проверки состояния приложения через health-check.
+- **Интерактивного пользовательского интерфейса** (Frontend), который позволяет:
+    - регистрироваться и авторизоваться;
+    - просматривать список задач;
+    - добавлять и удалять задачи из избранного;
+    - выходить из системы.
 
 ## Технологии
 
+### Backend
 - Python
 - FastAPI
 - PostgreSQL
@@ -24,24 +31,44 @@ Backend API для приложения управления задачами.
 - Docker
 - Docker Compose
 
+### Frontend
+- React
+- React Router
+- Context API (для управления состоянием задач и авторизации)
+
 ## Структура проекта
 
     todo_app/
-    ├── app/
+    ├── app/                     # Backend часть
+    │   ├── __init__.py
     │   ├── main.py
+    │   ├── api/
     │   ├── core/
     │   ├── db/
     │   ├── models/
     │   ├── schemas/
-    │   ├── services/
-    │   └── api/
+    │   └── services/
     ├── alembic/
     ├── tests/
     ├── alembic.ini
     ├── Dockerfile
-    ├── docker-compose.yml
     ├── requirements.txt
-    ├── .env
+    ├── .env.example
+    ├── frontend/                # Frontend часть
+    │   ├── public/
+    │   ├── src/
+    │   │   ├── assets/
+    │   │   ├── context/
+    │   │   ├── pages/
+    │   │   ├── App.jsx
+    │   │   ├── App.css
+    │   │   ├── main.jsx
+    │   │   └── index.css
+    │   ├── eslint.config.js
+    │   ├── package.json
+    │   ├── index.html
+    │   └── vite.config.js
+    ├── docker-compose.yml       # Общий Docker Compose файл для обеих частей
     └── README.md
 
 ## Переменные окружения
@@ -66,6 +93,13 @@ Backend API для приложения управления задачами.
 
 ## Запуск проекта
 
+Проект состоит из двух частей:
+
+- **Backend** — FastAPI + PostgreSQL
+- **Frontend** — React (запускается отдельно через Vite)
+
+### 1. Запуск Backend
+
 ### Через Docker
 
     docker compose up --build
@@ -73,6 +107,14 @@ Backend API для приложения управления задачами.
 ### Применение миграций
 
     docker compose exec api alembic upgrade head
+
+### 2. Запуск Frontend (из директории frontend)
+
+    npm install
+    npm run dev
+
+После запуска приложение будет доступно по адресу:
+http://localhost:5173
 
 ## Health-check
 

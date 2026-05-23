@@ -5,6 +5,8 @@ from app.api.routes.categories import router as categories_router
 from app.api.routes.tasks import router as tasks_router
 from app.core.config import settings
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # Создаём экземпляр FastAPI-приложения.
 #
 # Здесь задаются основные метаданные приложения:
@@ -15,6 +17,14 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     description="Backend API для приложения: Управление задачами (To-Do App)",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://localhost:5174"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
