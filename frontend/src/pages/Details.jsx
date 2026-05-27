@@ -1,26 +1,59 @@
-// src/pages/Details.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useTasks } from '../context/TaskContext'; // Импортируем хук
-
-// Токен.
-const AUTH_TOKEN = localStorage.getItem('access_token');
+import { useTasks } from '../context/TaskContext';
 
 const Details = () => {
   const { id } = useParams();
   const [task, setTask] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const { addTaskToFavorites, removeTaskFromFavorites, isFavorite } = useTasks();
+
+  const AUTH_TOKEN = localStorage.getItem('access_token');
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        if (!AUTH_TOKEN) {
+          return;
+        }
+
+        const response = await fetch('http://localhost:8000/categories', {
+          headers: {
+            Authorization: `Bearer ${AUTH_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ошибка загрузки категорий: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setCategories(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchCategories();
+  }, [AUTH_TOKEN]);
 
   useEffect(() => {
     const fetchTaskDetails = async () => {
       try {
         setLoading(true);
         setError(null);
+
+        if (!AUTH_TOKEN) {
+          throw new Error('Токен авторизации не найден');
+        }
+
         const response = await fetch(`http://localhost:8000/tasks/${id}`, {
           headers: {
-            'Authorization': `Bearer ${AUTH_TOKEN}`,
+            Authorization: `Bearer ${AUTH_TOKEN}`,
             'Content-Type': 'application/json',
           },
         });
@@ -41,7 +74,35 @@ const Details = () => {
     if (id) {
       fetchTaskDetails();
     }
-  }, [id]);
+  }, [id, AUTH_TOKEN]);
+
+  const categoryMap = useMemo(() => {
+    const map = new Map();
+    categories.forEach((category) => {
+      map.set(String(category.id), category.name);
+    });
+    return map;
+  }, [categories]);
+
+  const formatDate = (value) => {
+    if (!value) return '—';
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? '—' : date.toLocaleString('ru-RU');
+  };
+
+  const formatMinutes = (value) => {
+    return value === null || value === undefined ? '—' : `${value} мин.`;
+  };
+
+  const handleToggleFavorite = () => {
+    if (!task?.id) return;
+
+    if (isFavorite(task.id)) {
+      removeTaskFromFavorites(task.id);
+    } else {
+      addTaskToFavorites(task.id);
+    }
+  };
 
   if (loading) {
     return <div>Загрузка информации о задаче...</div>;
@@ -55,23 +116,24 @@ const Details = () => {
     return <div>Задача не найдена.</div>;
   }
 
-  const handleToggleFavorite = () => {
-    if (isFavorite(task.id)) {
-      removeTaskFromFavorites(task.id);
-    } else {
-      addTaskToFavorites(task.id);
-    }
-  };
-
   return (
     <div>
-      <h2>{task.title}</h2>
+      <h2>Подробная информация по задаче</h2>
+
       <p><strong>ID:</strong> {task.id}</p>
+      <p><strong>Название:</strong> {task.title}</p>
       <p><strong>Описание:</strong> {task.description || 'Нет описания'}</p>
       <p><strong>Статус:</strong> {task.is_completed ? 'Выполнена' : 'Не выполнена'}</p>
-      {task.category && <p><strong>Категория:</strong> {task.category.name}</p>}
-      <p><strong>Создана:</strong> {new Date(task.created_at).toLocaleString()}</p>
-      <p><strong>Обновлена:</strong> {new Date(task.updated_at).toLocaleString()}</p>
+      <p><strong>Приоритет:</strong> {task.priority || '—'}</p>
+      <p><strong>Срок выполнения:</strong> {formatDate(task.due_date)}</p>
+      <p><strong>Создана:</strong> {formatDate(task.created_at)}</p>
+      <p><strong>Выполнена:</strong> {formatDate(task.completed_at)}</p>
+      <p><strong>Ожидаемое время:</strong> {formatMinutes(task.estimated_minutes)}</p>
+      <p><strong>Фактическое время:</strong> {formatMinutes(task.actual_minutes)}</p>
+      <p>
+        <strong>Категория:</strong> {categoryMap.get(String(task.category_id)) || '—'}
+      </p>
+
       <button
         onClick={handleToggleFavorite}
         style={{

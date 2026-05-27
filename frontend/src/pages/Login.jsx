@@ -47,25 +47,33 @@ const Login = ({ onLogin }) => {
   };
 
   return (
-    <div>
-      <h2>Вход</h2>
+    <main>
+      <h1>Вход</h1>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} aria-describedby={error ? 'login-error' : undefined}>
         <div>
-          <label>Login:</label>
+          <label htmlFor="login">Логин</label>
           <input
+            id="login"
+            name="login"
             type="text"
             value={login}
             onChange={(e) => setLogin(e.target.value)}
+            autoComplete="username"
+            required
           />
         </div>
 
         <div>
-          <label>Password:</label>
+          <label htmlFor="password">Пароль</label>
           <input
+            id="password"
+            name="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
           />
         </div>
 
@@ -74,8 +82,12 @@ const Login = ({ onLogin }) => {
         </button>
       </form>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-    </div>
+      {error && (
+        <p id="login-error" role="alert" aria-live="assertive" style={{ color: 'red' }}>
+          {error}
+        </p>
+      )}
+    </main>
   );
 };
 

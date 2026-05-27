@@ -1,17 +1,27 @@
-// src/App.jsx
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
-import Home from './pages/Home';
-import List from './pages/List';
-import Details from './pages/Details';
-import About from './pages/About';
-import Login from './pages/Login';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  NavLink,
+  useNavigate,
+} from 'react-router-dom';
 import { TaskProvider } from './context/TaskContext';
 import './App.css';
 
+// Ленивый импорт страниц
+const Home = lazy(() => import('./pages/Home'));
+const List = lazy(() => import('./pages/List'));
+const Details = lazy(() => import('./pages/Details'));
+const About = lazy(() => import('./pages/About'));
+const Login = lazy(() => import('./pages/Login'));
+const Favourites = lazy(() => import('./pages/Favourites'));
+
 function AppContent() {
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    !!localStorage.getItem('access_token')
+  );
 
   useEffect(() => {
     const handleStorageChange = () => {
@@ -28,7 +38,6 @@ function AppContent() {
     localStorage.removeItem('favorites');
     setIsAuthenticated(false);
     navigate('/');
-    window.location.reload();
   };
 
   return (
@@ -50,6 +59,16 @@ function AppContent() {
               О нас
             </NavLink>
           </li>
+          {isAuthenticated && (
+            <li>
+              <NavLink
+                to="/favourites"
+                className={({ isActive }) => (isActive ? 'active' : '')}
+              >
+                Избранное
+              </NavLink>
+            </li>
+          )}
           <li>
             {isAuthenticated ? (
               <button type="button" onClick={handleLogout}>
@@ -64,14 +83,20 @@ function AppContent() {
         </ul>
       </nav>
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login onLogin={() => setIsAuthenticated(true)} />} />
-        <Route path="/list" element={<List />} />
-        <Route path="/list/:id" element={<Details />} />
-        <Route path="/about" element={<About />} />
-        <Route path="*" element={<h2>404: Страница не найдена</h2>} />
-      </Routes>
+      <Suspense fallback={<div>Загрузка страницы...</div>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route
+            path="/login"
+            element={<Login onLogin={() => setIsAuthenticated(true)} />}
+          />
+          <Route path="/list" element={<List />} />
+          <Route path="/list/:id" element={<Details />} />
+          <Route path="/about" element={<About />} />
+          {isAuthenticated && <Route path="/favourites" element={<Favourites />} />}
+          <Route path="*" element={<h2>404: Страница не найдена</h2>} />
+        </Routes>
+      </Suspense>
     </div>
   );
 }

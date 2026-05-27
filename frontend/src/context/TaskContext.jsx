@@ -1,4 +1,7 @@
+// src/context/TaskContext.jsx
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
+import { useCallback, useMemo } from 'react'; // Добавляем useMemo и useCallback
 
 const TaskContext = createContext();
 
@@ -11,9 +14,9 @@ export const TaskProvider = ({ children }) => {
     return savedFavorites ? JSON.parse(savedFavorites) : [];
   });
 
-  const getToken = () => localStorage.getItem('access_token');
+  const getToken = useCallback(() => localStorage.getItem('access_token'), []); // Мемоизируем
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -44,7 +47,7 @@ export const TaskProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]); // Зависимость от getToken
 
   useEffect(() => {
     fetchTasks();
@@ -54,20 +57,20 @@ export const TaskProvider = ({ children }) => {
     localStorage.setItem('favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  const addTaskToFavorites = (taskId) => {
+  const addTaskToFavorites = useCallback((taskId) => {
     setFavorites((prevFavorites) => {
       if (!prevFavorites.includes(taskId)) {
         return [...prevFavorites, taskId];
       }
       return prevFavorites;
     });
-  };
+  }, []); // Нет зависимостей, т.к. setFavorites стабилен
 
-  const removeTaskFromFavorites = (taskId) => {
+  const removeTaskFromFavorites = useCallback((taskId) => {
     setFavorites((prevFavorites) => prevFavorites.filter((id) => id !== taskId));
-  };
+  }, []); // Нет зависимостей, т.к. setFavorites стабилен
 
-  const isFavorite = (taskId) => favorites.includes(taskId);
+  const isFavorite = useCallback((taskId) => favorites.includes(taskId), [favorites]); // Зависимость от favorites
 
   return (
     <TaskContext.Provider
