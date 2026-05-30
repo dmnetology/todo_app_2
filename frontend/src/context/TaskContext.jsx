@@ -28,6 +28,7 @@ export const TaskProvider = ({ children }) => {
 
       if (!token) {
         setTasks([]);
+        setLoading(false);
         return;
       }
 

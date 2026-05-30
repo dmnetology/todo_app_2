@@ -94,12 +94,14 @@ function AppContent() {
         const currentUser = await loadCurrentUser(token);
         setUser(currentUser);
         setIsAuthenticated(true);
+        await fetchTasks();
         return true;
       } catch {
         token = await refreshToken();
         const currentUser = await loadCurrentUser(token);
         setUser(currentUser);
         setIsAuthenticated(true);
+        await fetchTasks();
         return true;
       }
     } catch {
@@ -139,14 +141,15 @@ function AppContent() {
   const handleLogin = async () => {
     const ok = await checkAuth();
     if (ok) {
-      await fetchTasks();
       navigate('/list');
     }
   };
 
   const handleLogout = () => {
     clearAuth();
-    clearTasks();
+    if (typeof clearTasks === 'function') {
+      clearTasks();
+    }
     navigate('/');
   };
 
@@ -238,9 +241,7 @@ function AppContent() {
 
           <Route
             path="/favourites"
-            element={
-              isAuthenticated ? <Favourites /> : <Navigate to="/login" replace />
-            }
+            element={isAuthenticated ? <Favourites /> : <Navigate to="/login" replace />}
           />
 
           <Route path="*" element={<h2>404: Страница не найдена</h2>} />
