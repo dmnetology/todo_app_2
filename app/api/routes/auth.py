@@ -84,3 +84,14 @@ def refresh_token(data: RefreshTokenRequest):
     или, в данной реализации, новый access_token и тот же refresh_token.
     """
     return refresh_access_token(data.refresh_token)
+
+@router.get("/me", response_model=UserRead)
+def get_me(current_user: User = Depends(get_current_user)):
+    """
+    Возвращает данные текущего авторизованного пользователя.
+
+    Используется фронтендом для:
+    - проверки валидности access-токена;
+    - отображения имени пользователя в интерфейсе.
+    """
+    return current_user

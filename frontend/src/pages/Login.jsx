@@ -8,10 +8,27 @@ const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const isValidEmail = (value) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    const trimmedLogin = login.trim();
+
+    if (!isValidEmail(trimmedLogin)) {
+      setError('Введите логин в формате email, например user@example.com');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Пароль должен содержать не менее 6 символов');
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const response = await fetch('http://localhost:8000/auth/login', {
@@ -20,7 +37,7 @@ const Login = ({ onLogin }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          login,
+          login: trimmedLogin,
           password,
         }),
       });
@@ -38,7 +55,6 @@ const Login = ({ onLogin }) => {
       if (onLogin) onLogin();
 
       navigate('/list');
-      window.location.reload();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -52,16 +68,20 @@ const Login = ({ onLogin }) => {
 
       <form onSubmit={handleSubmit} aria-describedby={error ? 'login-error' : undefined}>
         <div>
-          <label htmlFor="login">Логин</label>
+          <label htmlFor="login">Email</label>
           <input
             id="login"
             name="login"
-            type="text"
+            type="email"
             value={login}
             onChange={(e) => setLogin(e.target.value)}
             autoComplete="username"
             required
+            placeholder="user@example.com"
           />
+          <small>
+            В качестве логина используйте email, указанный при регистрации.
+          </small>
         </div>
 
         <div>
@@ -74,7 +94,11 @@ const Login = ({ onLogin }) => {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
             required
+            minLength={6}
           />
+          <small>
+            Минимальная длина пароля — 6 символов.
+          </small>
         </div>
 
         <button type="submit" disabled={loading}>
