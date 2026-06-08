@@ -1,0 +1,78 @@
+@use '../../styles/base/variables' as *;
+
+.input {
+  width: 100%;
+
+  &__label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: $font-size-sm;
+    font-weight: 600;
+    color: $color-text;
+  }
+
+  &__control-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  &__control {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+
+    background-color: $color-surface;
+    color: $color-text;
+
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+
+    transition:
+      border-color $transition-base,
+      box-shadow $transition-base;
+
+    &::placeholder {
+      color: $color-text-muted;
+    }
+
+    &:focus {
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    }
+  }
+
+  &__icon {
+    position: absolute;
+    top: 50%;
+    left: 14px;
+    transform: translateY(-50%);
+    color: $color-text-muted;
+    pointer-events: none;
+  }
+
+  &__control--with-icon {
+    padding-left: 42px;
+  }
+
+  &__error {
+    display: none;
+    margin-top: 6px;
+    font-size: $font-size-sm;
+    color: $color-danger;
+  }
+
+  &--error {
+    .input__control {
+      border-color: $color-danger;
+      background-color: $color-danger-light;
+
+      &:focus {
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+      }
+    }
+
+    .input__error {
+      display: block;
+    }
+  }
+}

@@ -1,0 +1,19 @@
+@use '../base/variables' as *;
+
+.container {
+  width: 100%;
+  max-width: $container-width;
+  margin: 0 auto;
+  padding: 0 $container-padding;
+
+  &--center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  &--vertical {
+    display: flex;
+    flex-direction: column;
+  }
+}

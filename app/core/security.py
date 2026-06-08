@@ -1,4 +1,4 @@
-# Безопасность проекта
+# app/core/security.py
 
 from datetime import datetime, timedelta, timezone
 

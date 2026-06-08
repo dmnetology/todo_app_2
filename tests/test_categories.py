@@ -1,3 +1,5 @@
+# app/tests/test_categories.py
+
 def test_create_category(client, auth_headers):
     """
     Тест создания категории.
@@ -109,3 +111,38 @@ def test_create_duplicate_category(client, auth_headers):
     response = client.post("/categories", headers=auth_headers, json=payload)
 
     assert response.status_code == 409
+
+
+def test_update_category_not_found(client, auth_headers):
+    """
+    Тест обновления несуществующей категории.
+
+    Сценарий:
+    1. Отправляем PUT-запрос на категорию, которой нет.
+    2. Проверяем, что сервер возвращает 404 Not Found.
+    """
+    response = client.put(
+        "/categories/999999",
+        headers=auth_headers,
+        json={"name": "Несуществующая категория"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Category not found"
+
+
+def test_delete_category_not_found(client, auth_headers):
+    """
+    Тест удаления несуществующей категории.
+
+    Сценарий:
+    1. Отправляем DELETE-запрос на категорию, которой нет.
+    2. Проверяем, что сервер возвращает 404 Not Found.
+    """
+    response = client.delete(
+        "/categories/999999",
+        headers=auth_headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Category not found"

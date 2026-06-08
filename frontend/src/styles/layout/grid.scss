@@ -1,0 +1,58 @@
+@use '../base/variables' as *;
+
+.grid {
+  display: grid;
+  gap: 24px;
+
+  &--cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  &--two-columns {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  &--auto {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+}
+
+.flex {
+  display: flex;
+  gap: 16px;
+
+  &--wrap {
+    flex-wrap: wrap;
+  }
+
+  &--center {
+    justify-content: center;
+    align-items: center;
+  }
+
+  &--between {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  &--column {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: $breakpoint-tablet) {
+  .grid {
+    &--cards {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
+
+@media (max-width: $breakpoint-mobile) {
+  .grid {
+    &--cards,
+    &--two-columns {
+      grid-template-columns: 1fr;
+    }
+  }
+}

@@ -1,3 +1,5 @@
+# app/models/task.py
+
 from datetime import datetime
 from enum import Enum
 
@@ -9,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Integer,
     Enum as SqlEnum,
+    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,73 +19,71 @@ from app.db.database import Base
 
 
 class TaskPriority(str, Enum):
-    """
-    Перечисление возможных приоритетов задачи.
-
-    Наследование от Enum делает класс полноценным перечислением,
-    где можно заранее ограничить набор допустимых значений.
-
-    Допустимые значения:
-    - low — низкий приоритет;
-    - medium — средний приоритет;
-    - high — высокий приоритет.
-    """
-
     low = "low"
     medium = "medium"
     high = "high"
 
 
+class TaskStatus(str, Enum):
+    new = "new"
+    in_progress = "in_progress"
+    paused = "paused"
+    completed = "completed"
+    cancelled = "cancelled"
+
+
 class Task(Base):
-    """
-    ORM-модель задачи пользователя.
-
-    Этот класс описывает таблицу tasks в базе данных.
-    Каждая запись в таблице tasks — это отдельная задача.
-
-    Задача:
-    - принадлежит конкретному пользователю;
-    - может иметь категорию;
-    - может иметь приоритет;
-    - может иметь срок выполнения;
-    - может быть выполненной или невыполненной.
-    """
-
     __tablename__ = "tasks"
 
-    id: Mapped[int] = mapped_column(primary_key=True, index=True)     # Уникальный идентификатор задачи.
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
 
-    title: Mapped[str] = mapped_column(String(200), nullable=False)     # Заголовок задачи.
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)     # Подробное описание задачи.
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)     # Флаг выполнения задачи.
+    status: Mapped[TaskStatus] = mapped_column(
+        SqlEnum(TaskStatus, name="taskstatus"),
+        default=TaskStatus.new,
+        nullable=False,
+    )
 
-    priority: Mapped[TaskPriority] = mapped_column(     # Приоритет задачи.
-        SqlEnum(TaskPriority),
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
+    priority: Mapped[TaskPriority] = mapped_column(
+        SqlEnum(TaskPriority, name="taskpriority"),
         default=TaskPriority.medium,
         nullable=False,
     )
 
-    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)     # Срок выполнения задачи.
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(     # Дата и время создания задачи.
-        DateTime,
-        default=datetime.utcnow,
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
+        server_default=func.now(),
     )
 
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)   # Дата и время завершения задачи.
+    planned_start_local: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=False),
+        nullable=True,
+    )
+    planned_start_timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    planned_start_at_utc: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
-    # Оценочное время выполнения задачи в минутах.
-    estimated_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Фактическое время выполнения задачи в минутах.
-    actual_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Идентификатор владельца задачи.
+    actual_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    estimated_minutes: Mapped[int | None] = mapped_column(Integer, default=0, nullable=False)
+    actual_minutes: Mapped[int | None] = mapped_column(Integer, default=0, nullable=False)
+
     owner_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
-    # Идентификатор категории задачи.
+
     category_id: Mapped[int | None] = mapped_column(
         ForeignKey("categories.id", ondelete="SET NULL"),
         nullable=True,
@@ -90,3 +91,9 @@ class Task(Base):
 
     owner = relationship("User", back_populates="tasks")
     category = relationship("Category", back_populates="tasks")
+    pauses = relationship(
+        "TaskPause",
+        back_populates="task",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )

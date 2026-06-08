@@ -1,0 +1,33 @@
+.checkbox,
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+
+  &__control {
+    width: 18px;
+    height: 18px;
+    accent-color: $color-primary;
+    cursor: pointer;
+  }
+
+  &__label {
+    font-size: $font-size-base;
+    color: $color-text;
+  }
+
+  &--disabled {
+    cursor: not-allowed;
+
+    .checkbox__control,
+    .radio__control {
+      cursor: not-allowed;
+    }
+
+    .checkbox__label,
+    .radio__label {
+      color: $color-disabled-text;
+    }
+  }
+}

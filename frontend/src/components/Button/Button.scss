@@ -1,0 +1,84 @@
+@use '../../styles/base/variables' as *;
+
+.button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+
+  border-radius: $radius-md;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition:
+    background-color $transition-base,
+    border-color $transition-base,
+    color $transition-base,
+    box-shadow $transition-base,
+    transform $transition-base;
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &--primary {
+    background-color: $color-primary;
+    color: $color-text-light;
+
+    &:hover {
+      background-color: $color-primary-hover;
+    }
+
+    &:active {
+      background-color: $color-primary-active;
+    }
+  }
+
+  &--secondary {
+    background-color: $color-secondary;
+    color: $color-text;
+    border-color: $color-border;
+
+    &:hover {
+      background-color: $color-secondary-hover;
+    }
+
+    &:active {
+      background-color: $color-secondary-active;
+    }
+  }
+
+  &--disabled,
+  &:disabled {
+    background-color: $color-disabled-bg;
+    color: $color-disabled-text;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  &--small {
+    min-height: 32px;
+    padding: 6px 12px;
+    font-size: $font-size-sm;
+  }
+
+  &--medium {
+    min-height: 40px;
+    padding: 9px 18px;
+    font-size: $font-size-base;
+  }
+
+  &--large {
+    min-height: 48px;
+    padding: 12px 24px;
+    font-size: $font-size-md;
+  }
+
+  &--full {
+    width: 100%;
+  }
+}

@@ -1,3 +1,5 @@
+# app/api/routes/tasks.py
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
@@ -9,9 +11,13 @@ from app.schemas.task import (
     TaskRead,
     TaskUpdate,
     TaskStatusUpdate,
+    TaskEstimateMetadataResponse,
     TaskEstimateResponse,
+    TaskStatus,
+    TaskListResponse,
 )
-from app.services.ai_service import predict_task_duration
+from app.ml.predictor import predict_task_duration
+
 from app.services.task_service import (
     create_task,
     get_tasks,
@@ -19,8 +25,17 @@ from app.services.task_service import (
     update_task,
     delete_task,
     update_task_status,
+    start_task,
+    pause_task,
+    resume_task,
+    complete_task,
+    cancel_task,
 )
 
+from app.services.ml_training_service import schedule_model_training_if_needed
+from fastapi import BackgroundTasks
+from app.schemas.ml import MLModelInfoResponse
+from app.services.ml_model_service import get_active_model_info
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -47,11 +62,11 @@ def create_new_task(
     return create_task(db, data, current_user)
 
 
-@router.get("", response_model=list[TaskRead])
+@router.get("", response_model=TaskListResponse)
 def read_tasks(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-    is_completed: bool | None = None,
+    status: TaskStatus | None = None,
     category_id: int | None = None,
     sort_by: str | None = Query(default=None, pattern="^(priority|due_date)$"),
     current_user: User = Depends(get_current_user),
@@ -62,7 +77,7 @@ def read_tasks(
 
     Поддерживаются:
     - пагинация через skip и limit;
-    - фильтрация по статусу выполнения;
+    - фильтрация по статусу;
     - фильтрация по категории;
     - сортировка по priority или due_date.
 
@@ -76,37 +91,52 @@ def read_tasks(
         user=current_user,
         skip=skip,
         limit=limit,
-        is_completed=is_completed,
+        status_filter=status,
         category_id=category_id,
         sort_by=sort_by,
     )
+
 
 @router.get("/ai/estimate", response_model=TaskEstimateResponse)
 def estimate_task_time(
     title: str = Query(..., min_length=1),
     category_id: int = Query(..., ge=1),
+    priority: str = Query("medium"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
-    Возвращает прогноз времени выполнения задачи.
+    Возвращает прогноз времени выполнения задачи и источник прогноза.
 
-    Логика прогноза:
-    - сначала ищется точное совпадение по названию и категории;
-    - затем ищется похожее совпадение по названию и категории;
-    - если совпадений по названию нет, используется статистика по категории;
-    - если данных по категории нет, используется общая статистика пользователя;
-    - если данных нет совсем, возвращается значение по умолчанию.
+    Используется для фронта:
+    - показывает, применяется ML или эвристика;
+    - если ML активен, возвращает метаданные модели;
+    - помогает пользователю понять, насколько прогноз основан на модели.
     """
-
-    predicted_minutes = predict_task_duration(
+    result = predict_task_duration(
         db=db,
         user_id=current_user.id,
         title=title,
         category_id=category_id,
+        priority=priority,
     )
 
-    return TaskEstimateResponse(predicted_minutes=predicted_minutes)
+    metadata = None
+    if result.metadata is not None:
+        metadata = TaskEstimateMetadataResponse(
+            trained_at=result.metadata.get("trained_at"),
+            mae=result.metadata.get("mae"),
+            trained_on_count=result.metadata.get("trained_on_count"),
+        )
+
+    return TaskEstimateResponse(
+        predicted_minutes=result.duration_minutes,
+        source=result.source,
+        model_type=result.model_type,
+        model_id=result.model_id,
+        confidence=result.confidence,
+        metadata=metadata,
+    )
 
 
 @router.get("/{task_id}", response_model=TaskRead)
@@ -153,14 +183,97 @@ def change_task_status(
     db: Session = Depends(get_db),
 ):
     """
-    Изменяет только статус выполнения задачи.
+    Изменяет статус задачи через универсальный endpoint.
 
-    Этот эндпоинт удобен для сценариев:
-    - отметить задачу выполненной;
-    - снять отметку выполнения;
-    - сохранить фактическое время выполнения.
+    Этот endpoint сохранён как переходный и маршрутизирует
+    действие на соответствующую бизнес-логику.
     """
     return update_task_status(db, task_id, data, current_user)
+
+
+@router.patch("/{task_id}/start", response_model=TaskRead)
+def start_task_endpoint(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Запускает задачу в работу.
+
+    Используется, когда пользователь начинает выполнение задачи.
+    """
+    return start_task(db, task_id, current_user)
+
+
+@router.patch("/{task_id}/pause", response_model=TaskRead)
+def pause_task_endpoint(
+    task_id: int,
+    pause_reason: str | None = Query(default=None, max_length=1000),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Ставит задачу на паузу.
+
+    Причина паузы может передаваться как необязательный параметр Query.
+    """
+    return pause_task(db, task_id, current_user, pause_reason=pause_reason)
+
+
+@router.patch("/{task_id}/resume", response_model=TaskRead)
+def resume_task_endpoint(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Возобновляет задачу после паузы.
+
+    Используется, когда пользователь снова возвращается к работе над задачей.
+    """
+    return resume_task(db, task_id, current_user)
+
+
+@router.patch("/{task_id}/complete", response_model=TaskRead)
+def complete_task_endpoint(
+    task_id: int,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Завершает задачу.
+
+    Если клиент передаёт actual_minutes, оно сохраняется явно.
+    Если значение не передано, сервис пересчитывает его автоматически.
+
+    После завершения задачи проверяем, не пора ли запускать обучение ML-модели.
+    """
+    task = complete_task(db, task_id, current_user)
+
+    training_scheduled = schedule_model_training_if_needed(
+        db=db,
+        user_id=current_user.id,
+        background_tasks=background_tasks,
+    )
+
+    print(f"ML training scheduled: {training_scheduled} for user_id={current_user.id}")
+
+    return task
+
+
+@router.patch("/{task_id}/cancel", response_model=TaskRead)
+def cancel_task_endpoint(
+    task_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Отменяет задачу.
+
+    Этот endpoint используется, когда задача больше не актуальна.
+    """
+    return cancel_task(db, task_id, current_user)
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -175,3 +288,16 @@ def remove_task(
     Возвращает статус 204 No Content, если удаление прошло успешно.
     """
     delete_task(db, task_id, current_user)
+
+
+@router.get("/ml/model-info", response_model=MLModelInfoResponse)
+def read_model_info(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Возвращает информацию об активной ML-модели текущего пользователя.
+
+    Если активной модели нет, сообщает, что используется fallback по медиане.
+    """
+    return get_active_model_info(db=db, user_id=current_user.id)

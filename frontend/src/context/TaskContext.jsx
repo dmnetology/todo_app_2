@@ -5,54 +5,42 @@ import React, {
   useContext,
   useCallback,
 } from 'react';
+import { getTasks } from '../api/tasks';
 
 const TaskContext = createContext();
 
 export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [skip, setSkip] = useState(0);
+  const [limit, setLimit] = useState(20);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const [favorites, setFavorites] = useState(() => {
     const savedFavorites = localStorage.getItem('favorites');
     return savedFavorites ? JSON.parse(savedFavorites) : [];
   });
 
-  const getToken = useCallback(() => localStorage.getItem('access_token'), []);
+    const fetchTasks = useCallback(async ({ skip = 0, limit = 20 } = {}) => {
+      try {
+        setLoading(true);
+        setError(null);
 
-  const fetchTasks = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const token = getToken();
-
-      if (!token) {
+        const data = await getTasks({ skip, limit });
+        setTasks(data?.items || []);
+        setTotal(data?.total || 0);
+        setSkip(data?.skip || 0);
+        setLimit(data?.limit || 20);
+      } catch (err) {
+        setError(err.message);
         setTasks([]);
+        setTotal(0);
+      } finally {
         setLoading(false);
-        return;
       }
-
-      const response = await fetch('http://localhost:8000/tasks', {
-        cache: 'no-store',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`Ошибка HTTP: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setTasks(data);
-    } catch (err) {
-      setError(err.message);
-      setTasks([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [getToken]);
+    }, []);
 
   useEffect(() => {
     fetchTasks();
@@ -82,6 +70,9 @@ export const TaskProvider = ({ children }) => {
 
   const clearTasks = useCallback(() => {
     setTasks([]);
+    setTotal(0);
+    setSkip(0);
+    setLimit(20);
     setLoading(false);
     setError(null);
   }, []);
@@ -90,6 +81,9 @@ export const TaskProvider = ({ children }) => {
     <TaskContext.Provider
       value={{
         tasks,
+        total,
+        skip,
+        limit,
         loading,
         error,
         favorites,

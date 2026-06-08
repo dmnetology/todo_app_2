@@ -1,3 +1,5 @@
+# app/schemas/category.py
+
 from pydantic import BaseModel, Field
 
 

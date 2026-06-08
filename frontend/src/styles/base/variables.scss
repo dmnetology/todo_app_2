@@ -1,0 +1,57 @@
+// Colors
+$color-primary: #2563eb;
+$color-primary-hover: #1d4ed8;
+$color-primary-active: #1e40af;
+
+$color-secondary: #f1f5f9;
+$color-secondary-hover: #e2e8f0;
+$color-secondary-active: #cbd5e1;
+
+$color-danger: #dc2626;
+$color-danger-light: #fee2e2;
+
+$color-success: #16a34a;
+$color-warning: #f59e0b;
+
+$color-bg: #f8fafc;
+$color-surface: #ffffff;
+$color-border: #e2e8f0;
+
+$color-text: #0f172a;
+$color-text-muted: #64748b;
+$color-text-light: #ffffff;
+
+$color-disabled-bg: #e5e7eb;
+$color-disabled-text: #9ca3af;
+
+// Typography
+$font-family-main: Arial, Helvetica, sans-serif;
+
+$font-size-xs: 12px;
+$font-size-sm: 14px;
+$font-size-base: 16px;
+$font-size-md: 18px;
+$font-size-lg: 22px;
+$font-size-xl: 28px;
+
+// Border radius
+$radius-sm: 6px;
+$radius-md: 10px;
+$radius-lg: 16px;
+$radius-xl: 24px;
+
+// Shadows
+$shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
+$shadow-md: 0 4px 12px rgba(15, 23, 42, 0.12);
+$shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.16);
+
+// Spacing
+$container-width: 1200px;
+$container-padding: 16px;
+
+// Breakpoints
+$breakpoint-mobile: 768px;
+$breakpoint-tablet: 1024px;
+
+// Transitions
+$transition-base: 0.2s ease;

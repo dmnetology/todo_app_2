@@ -6,16 +6,13 @@ from sqlalchemy.orm import sessionmaker
 from app.db.database import Base, get_db
 from app.main import app
 
-
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 
-# Создаём SQLAlchemy engine для тестовой базы.
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
     connect_args={"check_same_thread": False},
 )
 
-# Фабрика тестовых сессий SQLAlchemy.
 TestingSessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
@@ -25,20 +22,10 @@ TestingSessionLocal = sessionmaker(
 
 @pytest.fixture()
 def db_session():
-    """
-    Создаёт чистую тестовую базу данных для каждого теста.
-
-    Что происходит:
-    - удаляются все таблицы;
-    - создаются таблицы заново;
-    - открывается новая сессия SQLAlchemy;
-    - после теста сессия закрывается.
-    """
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
     db = TestingSessionLocal()
-
     try:
         yield db
     finally:
@@ -46,13 +33,10 @@ def db_session():
 
 
 @pytest.fixture()
-def client(db_session):
+def client(db_session, monkeypatch):
     """
-    Создаёт тестовый клиент FastAPI.
-
-    Эта фикстура подменяет зависимость get_db,
-    чтобы все запросы в тестах использовали тестовую SQLite-базу,
-    а не реальную рабочую БД приложения.
+    Подменяем get_db и отключаем ML-фоновые вызовы,
+    чтобы тесты были быстрыми и стабильными.
     """
 
     def override_get_db():
@@ -63,6 +47,18 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
 
+    # Если в коде есть фоновый ML-старт, глушим его.
+    try:
+        import app.api.routes.tasks as tasks_routes
+        monkeypatch.setattr(
+            tasks_routes,
+            "schedule_model_training_if_needed",
+            lambda *args, **kwargs: None,
+            raising=False,
+        )
+    except Exception:
+        pass
+
     with TestClient(app) as test_client:
         yield test_client
 
@@ -71,21 +67,12 @@ def client(db_session):
 
 @pytest.fixture()
 def auth_headers(client):
-    """
-    Регистрирует тестового пользователя и возвращает заголовки авторизации.
-
-    Последовательность действий:
-    1. Регистрируем пользователя через /auth/register.
-    2. Логинимся через /auth/login.
-    3. Извлекаем access_token из ответа.
-    4. Возвращаем заголовок Authorization для дальнейших запросов.
-    """
     client.post(
         "/auth/register",
         json={
             "first_name": "Ivan",
             "last_name": "Ivanov",
-            "login": "ivan",
+            "login": "ivan@mail.ru",
             "password": "password123",
         },
     )
@@ -93,13 +80,11 @@ def auth_headers(client):
     response = client.post(
         "/auth/login",
         json={
-            "login": "ivan",
+            "login": "ivan@mail.ru",
             "password": "password123",
         },
     )
 
-    token = response.json()["access_token"]
 
-    return {
-        "Authorization": f"Bearer {token}",
-    }
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

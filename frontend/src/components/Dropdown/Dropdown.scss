@@ -1,0 +1,49 @@
+@use '../../styles/base/variables' as *;
+
+.dropdown {
+  width: 100%;
+
+  &__label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: $font-size-sm;
+    font-weight: 600;
+    color: $color-text;
+  }
+
+  &__select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 40px 10px 14px;
+
+    border: 1px solid $color-border;
+    border-radius: $radius-md;
+
+    background-color: $color-surface;
+    color: $color-text;
+
+    cursor: pointer;
+    transition:
+      border-color $transition-base,
+      box-shadow $transition-base;
+
+    &:focus {
+      outline: none;
+      border-color: $color-primary;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    }
+  }
+
+  &--error {
+    .dropdown__select {
+      border-color: $color-danger;
+      background-color: $color-danger-light;
+    }
+  }
+
+  &__error {
+    margin-top: 6px;
+    font-size: $font-size-sm;
+    color: $color-danger;
+  }
+}
