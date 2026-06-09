@@ -16,6 +16,16 @@ class TaskStatus(str, Enum):
     cancelled = "cancelled"
 
 
+class TaskStatusFilter(str, Enum):
+    all = "all"
+    unfinished = "unfinished"
+    new = "new"
+    in_progress = "in_progress"
+    paused = "paused"
+    completed = "completed"
+    cancelled = "cancelled"
+
+
 class TaskDatePreset(str, Enum):
     all = "all"
     all_from_today = "all_from_today"

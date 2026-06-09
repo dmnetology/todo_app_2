@@ -15,6 +15,7 @@ from app.schemas.task import (
     TaskEstimateMetadataResponse,
     TaskEstimateResponse,
     TaskStatus,
+    TaskStatusFilter,
     TaskListResponse,
     TaskDatePreset,
     TaskSortBy,
@@ -61,7 +62,7 @@ def create_new_task(
 def read_tasks(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
-    status: TaskStatus | None = None,
+    status: TaskStatusFilter | None = Query(default=None),
     category_id: int | None = None,
     title: str | None = Query(default=None, min_length=1, max_length=200),
     date_preset: TaskDatePreset | None = Query(default=None),

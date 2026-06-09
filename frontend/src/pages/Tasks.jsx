@@ -135,6 +135,8 @@ const Tasks = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTitle, setSearchTitle] = useState('');
+  const [debouncedSearchTitle, setDebouncedSearchTitle] = useState('');
 
   const [sortBy, setSortBy] = useState('plan');
   const [sortOrder, setSortOrder] = useState('asc');
@@ -229,6 +231,7 @@ const Tasks = () => {
         limit: limit || 20,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         category_id: categoryFilter !== 'all' ? categoryFilter : undefined,
+        title: debouncedSearchTitle || undefined,
         date_preset: datePreset === 'all' ? undefined : datePreset,
         sort_by: SORT_FIELD_MAP[sortBy],
         sort_order: sortOrder,
@@ -239,14 +242,23 @@ const Tasks = () => {
       fetchTasks,
       categoryFilter,
       statusFilter,
+      debouncedSearchTitle,
       datePreset,
       sortBy,
       sortOrder,
     ]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [categoryFilter, statusFilter, datePreset, sortBy, sortOrder]);
+  setCurrentPage(1);
+}, [categoryFilter, statusFilter, datePreset, sortBy, sortOrder, debouncedSearchTitle]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTitle(searchTitle.trim());
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchTitle]);
 
   useEffect(() => {
     const fetchWeatherByCoords = async (lat, lon, placeLabel) => {
@@ -337,6 +349,7 @@ const Tasks = () => {
         limit: limit || 20,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         category_id: categoryFilter !== 'all' ? categoryFilter : undefined,
+        title: debouncedSearchTitle || undefined,
         date_preset: datePreset === 'all' ? undefined : datePreset,
         sort_by: SORT_FIELD_MAP[sortBy],
         sort_order: sortOrder,
@@ -459,7 +472,7 @@ const Tasks = () => {
     }
 
     if (modelInfo.source === 'fallback') {
-      return 'Для прогнозов используется fallback по медиане. ML-модель не найдена.';
+      return 'Для прогноза продолжительности задачи используется fallback-алгоритм с расчетом по медиане. У текущего пользователя активных ML-моделей не обнаружено.';
     }
 
     const modelType = modelInfo.model_type || '—';
@@ -521,13 +534,6 @@ const Tasks = () => {
   </div>
 ) : null;
 
-  if (loading) {
-    return (
-      <main className="tasks-page">
-        <div className="tasks-page__message">Загрузка задач...</div>
-      </main>
-    );
-  }
 
   if (error) {
     return (
@@ -569,6 +575,20 @@ const Tasks = () => {
     </header>
 
       <section className="tasks-page__controls" aria-label="Фильтры задач">
+      <div className="tasks-page__filter tasks-page__search">
+          <label htmlFor="task-search-title" className="tasks-page__search-label">
+            Поиск по названию
+          </label>
+          <input
+            id="task-search-title"
+            type="text"
+            className="tasks-page__search-input"
+            value={searchTitle}
+            onChange={(e) => setSearchTitle(e.target.value)}
+            placeholder="Введите часть названия задачи"
+          />
+        </div>
+
         <Dropdown
           id="category-filter"
           label="Категория"
@@ -590,6 +610,7 @@ const Tasks = () => {
           onChange={(e) => setStatusFilter(e.target.value)}
           options={[
             { value: 'all', label: 'Все' },
+            { value: 'unfinished', label: 'Невыполненные' },
             { value: 'new', label: 'Новые' },
             { value: 'in_progress', label: 'В работе' },
             { value: 'paused', label: 'Пауза' },

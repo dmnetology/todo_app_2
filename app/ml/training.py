@@ -9,6 +9,7 @@ from typing import Any
 
 import joblib
 import numpy as np
+import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
@@ -28,7 +29,7 @@ from app.models.ml_model import MLModel
 from app.models.task import Task
 
 
-MIN_TRAINING_SAMPLES = 50
+MIN_TRAINING_SAMPLES = 51
 DEFAULT_N_ESTIMATORS = 200
 RANDOM_STATE = 42
 
@@ -148,9 +149,10 @@ def train_duration_model_for_user(db: Session, user_id: int) -> MLModel:
         )
 
     pipeline = build_pipeline()
-    pipeline.fit(X, y)
+    X_df = pd.DataFrame(X)
+    pipeline.fit(X_df, y)
 
-    predictions = pipeline.predict(X)
+    predictions = pipeline.predict(X_df)
     mae = float(mean_absolute_error(y, predictions))
 
     fallback_predictions = [

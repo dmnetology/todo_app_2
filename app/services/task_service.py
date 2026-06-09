@@ -14,6 +14,7 @@ from app.models.user import User
 from app.schemas.task import (
     TaskCreate,
     TaskUpdate,
+    TaskStatusFilter,
     TaskStatusUpdate,
     TaskDatePreset,
     TaskSortBy,
@@ -240,7 +241,7 @@ def get_tasks(
     user: User,
     skip: int = 0,
     limit: int = 20,
-    status_filter: TaskStatus | None = None,
+    status_filter: TaskStatusFilter | None = None,
     category_id: int | None = None,
     title: str | None = None,
     date_preset: TaskDatePreset | None = None,
@@ -251,8 +252,19 @@ def get_tasks(
 ) -> dict:
     query = db.query(Task).filter(Task.owner_id == user.id)
 
-    if status_filter is not None:
-        query = query.filter(Task.status == status_filter)
+    if status_filter is not None and status_filter != TaskStatusFilter.all:
+        if status_filter == TaskStatusFilter.unfinished:
+            query = query.filter(
+                Task.status.in_(
+                    [
+                        TaskStatus.new,
+                        TaskStatus.in_progress,
+                        TaskStatus.paused,
+                    ]
+                )
+            )
+        else:
+            query = query.filter(Task.status == TaskStatus(status_filter.value))
 
     if category_id is not None:
         query = query.filter(Task.category_id == category_id)

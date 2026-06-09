@@ -14,6 +14,9 @@ from app.ml.model_registry import (
     load_model_artifacts,
 )
 
+import traceback
+import pandas as pd
+
 
 @dataclass
 class PredictionResult:
@@ -44,6 +47,8 @@ def predict_task_duration(
     """
     ml_record = get_active_ml_model_record(db, user_id)
 
+    print(f"[PREDICT] user_id={user_id} ml_record={bool(ml_record)}")
+
     if not ml_record:
         duration = fallback_predict_task_duration(
             db=db,
@@ -51,6 +56,7 @@ def predict_task_duration(
             title=title,
             category_id=category_id,
         )
+        print(f"[PREDICT] source=fallback reason=no_active_model duration={duration}")
         return PredictionResult(
             duration_minutes=duration,
             source="fallback",
@@ -67,8 +73,10 @@ def predict_task_duration(
             "planned_hour": planned_hour,
         }
 
-        prediction = model.predict([features])[0]
+        features_df = pd.DataFrame([features])
+        prediction = model.predict(features_df)[0]
         duration = int(round(float(prediction)))
+        print(duration)
 
         if duration < 1:
             duration = 1
@@ -79,6 +87,8 @@ def predict_task_duration(
             if isinstance(mae, (int, float)) and mae >= 0:
                 confidence = max(0.0, 1.0 - (float(mae) / 180.0))
 
+        print(f"[PREDICT] source=ml model_id={ml_record.id} model_type={ml_record.model_type} duration={duration}")
+
         return PredictionResult(
             duration_minutes=duration,
             source="ml",
@@ -88,7 +98,11 @@ def predict_task_duration(
             metadata=metadata,
         )
 
-    except Exception:
+    except Exception as exc:
+        print(f"[PREDICT] exception_type={type(exc).__name__}")
+        print(f"[PREDICT] exception_repr={repr(exc)}")
+        print("[PREDICT] traceback:")
+        print(traceback.format_exc())
         duration = fallback_predict_task_duration(
             db=db,
             user_id=user_id,
