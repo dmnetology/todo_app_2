@@ -1,16 +1,24 @@
 # app/services/task_service.py
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, time, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
 from app.models.task import Task, TaskStatus
 from app.models.task_pause import TaskPause
 from app.models.user import User
-from app.schemas.task import TaskCreate, TaskUpdate, TaskStatusUpdate
+from app.schemas.task import (
+    TaskCreate,
+    TaskUpdate,
+    TaskStatusUpdate,
+    TaskDatePreset,
+    TaskSortBy,
+    SortOrder,
+)
 from app.ml.predictor import predict_task_duration
 
 
@@ -19,14 +27,6 @@ def validate_category_owner(
     category_id: int | None,
     user_id: int,
 ) -> None:
-    """
-    Проверяет, что указанная категория принадлежит текущему пользователю.
-
-    Это нужно для защиты от ситуации, когда пользователь пытается
-    привязать задачу к чужой категории.
-
-    Если category_id равен None, проверка не выполняется.
-    """
     if category_id is None:
         return
 
@@ -40,6 +40,7 @@ def validate_category_owner(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Category not found",
         )
+
 
 def _local_to_utc(dt: datetime | None, timezone_name: str | None) -> datetime | None:
     if dt is None:
@@ -58,12 +59,6 @@ def _local_to_utc(dt: datetime | None, timezone_name: str | None) -> datetime | 
 
 
 def _get_now() -> datetime:
-    """
-    Возвращает текущее UTC-время.
-
-    Вынесено в отдельную функцию, чтобы единообразно использовать
-    временные метки во всех сценариях изменения задач и пауз.
-    """
     return datetime.now(timezone.utc)
 
 
@@ -105,17 +100,98 @@ def _recalculate_actual_minutes(task: Task) -> None:
     task.actual_minutes = max(effective_seconds // 60, 1) if effective_seconds > 0 else 0
 
 
+def _start_of_day_utc(now: datetime) -> datetime:
+    return now.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def _start_of_next_day_utc(now: datetime) -> datetime:
+    return _start_of_day_utc(now) + timedelta(days=1)
+
+
+def _start_of_tomorrow_utc(now: datetime) -> datetime:
+    return _start_of_day_utc(now) + timedelta(days=1)
+
+
+def _start_of_day_after_tomorrow_utc(now: datetime) -> datetime:
+    return _start_of_day_utc(now) + timedelta(days=2)
+
+
+def _next_monday_utc(now: datetime) -> datetime:
+    start_today = _start_of_day_utc(now)
+    days_until_monday = (7 - start_today.weekday()) % 7
+    if days_until_monday == 0:
+        days_until_monday = 7
+    return start_today + timedelta(days=days_until_monday)
+
+
+def _start_of_next_week_utc(now: datetime) -> datetime:
+    return _next_monday_utc(now)
+
+
+def _start_of_week_after_next_utc(now: datetime) -> datetime:
+    return _next_monday_utc(now) + timedelta(days=7)
+
+
+def _apply_date_filter(
+    query,
+    date_preset: TaskDatePreset | None,
+    planned_start_from: datetime | None,
+    planned_start_to: datetime | None,
+):
+    now = _get_now()
+
+    if date_preset and date_preset != TaskDatePreset.all:
+        if date_preset == TaskDatePreset.all_from_today:
+            query = query.filter(Task.planned_start_at_utc >= _start_of_day_utc(now))
+
+        elif date_preset == TaskDatePreset.today:
+            query = query.filter(
+                Task.planned_start_at_utc >= _start_of_day_utc(now),
+                Task.planned_start_at_utc < _start_of_next_day_utc(now),
+            )
+
+        elif date_preset == TaskDatePreset.tomorrow:
+            query = query.filter(
+                Task.planned_start_at_utc >= _start_of_tomorrow_utc(now),
+                Task.planned_start_at_utc < _start_of_day_after_tomorrow_utc(now),
+            )
+
+        elif date_preset == TaskDatePreset.week:
+            query = query.filter(
+                Task.planned_start_at_utc >= _start_of_day_utc(now),
+                Task.planned_start_at_utc < _start_of_week_after_next_utc(now),
+            )
+
+    if planned_start_from is not None:
+        query = query.filter(Task.planned_start_at_utc >= planned_start_from)
+
+    if planned_start_to is not None:
+        query = query.filter(Task.planned_start_at_utc < planned_start_to)
+
+    return query
+
+
+def _apply_sorting(query, sort_by: TaskSortBy | None, sort_order: SortOrder | None):
+    direction_desc = sort_order != SortOrder.asc
+
+    sort_map = {
+        TaskSortBy.title: Task.title,
+        TaskSortBy.status: Task.status,
+        TaskSortBy.priority: Task.priority,
+        TaskSortBy.planned_start_at_utc: Task.planned_start_at_utc,
+        TaskSortBy.actual_started_at: Task.actual_started_at,
+        TaskSortBy.completed_at: Task.completed_at,
+        TaskSortBy.estimated_minutes: Task.estimated_minutes,
+        TaskSortBy.actual_minutes: Task.actual_minutes,
+    }
+
+    order_col = sort_map.get(sort_by, Task.created_at)
+    order_expr = order_col.desc() if direction_desc else order_col.asc()
+
+    return query.order_by(order_expr, Task.created_at.desc())
+
+
 def create_task(db: Session, data: TaskCreate, user: User) -> Task:
-    """
-    Создаёт новую задачу для пользователя.
-
-    Алгоритм:
-    1. Проверяет, принадлежит ли категория пользователю.
-    2. Определяет estimated_minutes через ML-сервис.
-    3. Создаёт объект Task.
-    4. Сохраняет задачу в базе данных.
-    """
-
     validate_category_owner(db, data.category_id, user.id)
 
     prediction = predict_task_duration(
@@ -152,13 +228,6 @@ def create_task(db: Session, data: TaskCreate, user: User) -> Task:
         actual_minutes=None,
     )
 
-    #print("CREATE TASK DATA:", data.model_dump())
-    #print("planned_start_local:", data.planned_start_local)
-    #print("planned_start_timezone:", data.planned_start_timezone)
-    #print("planned_start_at_utc:", planned_start_at_utc)
-    #print("prediction_source:", prediction.source)
-    #print("prediction_minutes:", prediction.duration_minutes)
-
     db.add(task)
     db.commit()
     db.refresh(task)
@@ -173,17 +242,13 @@ def get_tasks(
     limit: int = 20,
     status_filter: TaskStatus | None = None,
     category_id: int | None = None,
-    sort_by: str | None = None,
-) -> dict[str, object]:
-    """
-    Возвращает список задач пользователя.
-
-    Поддерживаются:
-    - пагинация через skip и limit;
-    - фильтр по статусу;
-    - фильтр по категории;
-    - сортировка по приоритету, сроку или дате создания.
-    """
+    title: str | None = None,
+    date_preset: TaskDatePreset | None = None,
+    planned_start_from: datetime | None = None,
+    planned_start_to: datetime | None = None,
+    sort_by: TaskSortBy | None = None,
+    sort_order: SortOrder | None = None,
+) -> dict:
     query = db.query(Task).filter(Task.owner_id == user.id)
 
     if status_filter is not None:
@@ -192,15 +257,13 @@ def get_tasks(
     if category_id is not None:
         query = query.filter(Task.category_id == category_id)
 
-    if sort_by == "priority":
-        query = query.order_by(Task.priority.desc())
-    elif sort_by == "due_date":
-        query = query.order_by(Task.due_date.asc())
-    else:
-        query = query.order_by(Task.created_at.desc())
+    if title:
+        query = query.filter(Task.title.ilike(f"%{title.strip()}%"))
+
+    query = _apply_date_filter(query, date_preset, planned_start_from, planned_start_to)
+    query = _apply_sorting(query, sort_by, sort_order)
 
     total = query.count()
-
     items = query.offset(skip).limit(limit).all()
 
     return {
@@ -212,12 +275,6 @@ def get_tasks(
 
 
 def get_task_by_id(db: Session, task_id: int, user: User) -> Task:
-    """
-    Возвращает задачу по её идентификатору.
-
-    Ищет только среди задач текущего пользователя.
-    Если задача не найдена, возвращает HTTP 404.
-    """
     task = db.query(Task).filter(
         Task.id == task_id,
         Task.owner_id == user.id,
@@ -238,16 +295,6 @@ def update_task(
     data: TaskUpdate,
     user: User,
 ) -> Task:
-    """
-    Обновляет задачу пользователя.
-
-    Используется частичное обновление:
-    - передаются только поля, которые нужно изменить;
-    - остальные поля остаются без изменений.
-
-    Если обновляется category_id, проверяется,
-    принадлежит ли категория текущему пользователю.
-    """
     task = get_task_by_id(db, task_id, user)
 
     update_data = data.model_dump(exclude_unset=True)
@@ -273,28 +320,12 @@ def update_task(
 
 
 def delete_task(db: Session, task_id: int, user: User) -> None:
-    """
-    Удаляет задачу пользователя.
-
-    Сначала задача ищется только в рамках задач текущего пользователя,
-    затем удаляется из базы.
-    """
     task = get_task_by_id(db, task_id, user)
-
     db.delete(task)
     db.commit()
 
 
 def start_task(db: Session, task_id: int, user: User) -> Task:
-    """
-    Запускает задачу в работу.
-
-    При старте:
-    - статус переводится в in_progress;
-    - если это первый старт, заполняется actual_started_at;
-    - current_started_at устанавливается в текущее время;
-    - флаг is_completed сбрасывается.
-    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status == TaskStatus.completed:
@@ -325,15 +356,6 @@ def pause_task(
     user: User,
     pause_reason: str | None = None,
 ) -> Task:
-    """
-    Ставит задачу на паузу.
-
-    При паузе:
-    - статус переводится в paused;
-    - создаётся запись в таблице task_pauses;
-    - фиксируется paused_at;
-    - current_started_at очищается.
-    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status != TaskStatus.in_progress:
@@ -362,14 +384,6 @@ def pause_task(
 
 
 def resume_task(db: Session, task_id: int, user: User) -> Task:
-    """
-    Возобновляет задачу после паузы.
-
-    При возобновлении:
-    - статус переводится в in_progress;
-    - current_started_at устанавливается в текущее время;
-    - закрывается последняя незавершённая пауза.
-    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status != TaskStatus.paused:
@@ -402,16 +416,6 @@ def complete_task(
     task_id: int,
     user: User,
 ) -> Task:
-    """
-    Завершает задачу.
-
-    При завершении:
-    - статус переводится в completed;
-    - is_completed становится True;
-    - completed_at заполняется текущим временем;
-    - current_started_at очищается;
-    - actual_minutes сохраняется либо пересчитывается.
-    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status in (TaskStatus.completed, TaskStatus.cancelled):
@@ -442,16 +446,6 @@ def complete_task(
 
 
 def cancel_task(db: Session, task_id: int, user: User) -> Task:
-    """
-    Отменяет задачу.
-
-    При отмене:
-    - статус переводится в cancelled;
-    - is_completed сбрасывается;
-    - current_started_at очищается;
-    - completed_at не заполняется;
-    - фактическое время при необходимости сохраняется как есть.
-    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status == TaskStatus.completed:
@@ -476,14 +470,6 @@ def update_task_status(
     data: TaskStatusUpdate,
     user: User,
 ) -> Task:
-    """
-    Изменяет статус задачи через универсальный endpoint.
-
-    Этот метод сохраняется как переходный слой:
-    - позволяет перевести задачу в нужный статус;
-    - маршрутизирует действие на специализированную бизнес-логику;
-    - поддерживает совместимость со старым API-стилем.
-    """
     if data.status == TaskStatus.new:
         task = get_task_by_id(db, task_id, user)
         task.status = TaskStatus.new

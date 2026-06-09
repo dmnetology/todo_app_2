@@ -23,24 +23,24 @@ export const TaskProvider = ({ children }) => {
     return savedFavorites ? JSON.parse(savedFavorites) : [];
   });
 
-    const fetchTasks = useCallback(async ({ skip = 0, limit = 20 } = {}) => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchTasks = useCallback(async (params = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const data = await getTasks({ skip, limit });
-        setTasks(data?.items || []);
-        setTotal(data?.total || 0);
-        setSkip(data?.skip || 0);
-        setLimit(data?.limit || 20);
-      } catch (err) {
-        setError(err.message);
-        setTasks([]);
-        setTotal(0);
-      } finally {
-        setLoading(false);
-      }
-    }, []);
+      const data = await getTasks(params);
+      setTasks(data?.items || []);
+      setTotal(data?.total || 0);
+      setSkip(data?.skip || 0);
+      setLimit(data?.limit || 20);
+    } catch (err) {
+      setError(err.message);
+      setTasks([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchTasks();

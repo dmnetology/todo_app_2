@@ -8,6 +8,17 @@ import { formatDateTimeShort, parseDate } from '../utils/datetime';
 const TASKS_API_URL = 'http://localhost:8000/tasks';
 const FALLBACK_CITY = 'Набережные Челны';
 
+const SORT_FIELD_MAP = {
+  title: 'title',
+  status: 'status',
+  priority: 'priority',
+  plan: 'planned_start_at_utc',
+  start: 'actual_started_at',
+  finish: 'completed_at',
+  forecast: 'estimated_minutes',
+  fact: 'actual_minutes',
+};
+
 const getStatusLabel = (status) => {
   switch (status) {
     case 'new':
@@ -53,23 +64,6 @@ const getStatusClassName = (status) => {
   }
 };
 
-const getStatusSortValue = (status) => {
-  switch (status) {
-    case 'new':
-      return 1;
-    case 'in_progress':
-      return 2;
-    case 'paused':
-      return 3;
-    case 'completed':
-      return 4;
-    case 'cancelled':
-      return 5;
-    default:
-      return 99;
-  }
-};
-
 const getStartTimeMinutesDiff = (planValue, actualStartedAt, status) => {
   const planDate = parseDate(planValue);
   if (!planDate) return null;
@@ -94,24 +88,6 @@ const formatTimeToStart = (planValue, actualStartedAt, status) => {
   }
 
   return `${diff} мин.`;
-};
-
-const startOfDay = (date) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const endOfDay = (date) => {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
-};
-
-const addDays = (date, days) => {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
 };
 
 const getWeatherDescription = (code) => {
@@ -168,6 +144,7 @@ const Tasks = () => {
   const [weather, setWeather] = useState(null);
   const [weatherPlace, setWeatherPlace] = useState(FALLBACK_CITY);
   const [currencyRates, setCurrencyRates] = useState(null);
+  const [modelInfo, setModelInfo] = useState(null);
   const [actionLoading, setActionLoading] = useState({});
 
   const AUTH_TOKEN = localStorage.getItem('access_token');
@@ -220,11 +197,52 @@ const Tasks = () => {
   }, []);
 
   useEffect(() => {
-    fetchTasks({
-      skip: (currentPage - 1) * (limit || 20),
-      limit: limit || 20,
-    });
-  }, [currentPage, limit, fetchTasks]);
+    const fetchModelInfo = async () => {
+      try {
+        if (!AUTH_TOKEN) return;
+
+        const response = await fetch('http://localhost:8000/tasks/ml/model-info', {
+          headers: {
+            Authorization: `Bearer ${AUTH_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ошибка загрузки ML-информации: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setModelInfo(data);
+      } catch (err) {
+        console.error('Ошибка загрузки ML-информации:', err);
+        setModelInfo(null);
+      }
+    };
+
+    fetchModelInfo();
+  }, [AUTH_TOKEN]);
+
+    useEffect(() => {
+      fetchTasks({
+        skip: (currentPage - 1) * (limit || 20),
+        limit: limit || 20,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        category_id: categoryFilter !== 'all' ? categoryFilter : undefined,
+        date_preset: datePreset === 'all' ? undefined : datePreset,
+        sort_by: SORT_FIELD_MAP[sortBy],
+        sort_order: sortOrder,
+      });
+    }, [
+      currentPage,
+      limit,
+      fetchTasks,
+      categoryFilter,
+      statusFilter,
+      datePreset,
+      sortBy,
+      sortOrder,
+    ]);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -296,98 +314,7 @@ const Tasks = () => {
     return map;
   }, [categories]);
 
-  const filteredAndSortedTasks = useMemo(() => {
-    const today = startOfDay(new Date());
-
-    let result = [...(tasks || [])].filter((task) => {
-      const planDate = parseDate(task.planned_start_local);
-      if (!planDate) return false;
-
-      if (datePreset === 'all') {
-        return true;
-      }
-
-      if (datePreset === 'all_from_today') {
-        return planDate >= startOfDay(today);
-      }
-
-      if (datePreset === 'today') {
-        return planDate >= startOfDay(today) && planDate <= endOfDay(today);
-      }
-
-      if (datePreset === 'tomorrow') {
-        const tomorrow = addDays(today, 1);
-        return planDate >= startOfDay(tomorrow) && planDate <= endOfDay(tomorrow);
-      }
-
-      if (datePreset === 'week') {
-        const currentDay = today.getDay();
-        const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
-        const monday = addDays(today, mondayOffset);
-        const sunday = addDays(monday, 6);
-        return planDate >= startOfDay(monday) && planDate <= endOfDay(sunday);
-      }
-
-      return planDate >= startOfDay(today);
-    });
-
-    if (categoryFilter !== 'all') {
-      result = result.filter((task) => String(task.category_id) === String(categoryFilter));
-    }
-
-    if (statusFilter !== 'all') {
-      result = result.filter((task) => String(task.status) === String(statusFilter));
-    }
-
-    const getSortValue = (task, key) => {
-      switch (key) {
-        case 'number':
-          return Number(task.id ?? 0);
-        case 'title':
-          return String(task.title || '').toLowerCase();
-        case 'status':
-          return getStatusSortValue(task.status);
-        case 'priority':
-          return String(task.priority || '').toLowerCase();
-        case 'plan':
-          return parseDate(task.planned_start_local)?.getTime() ?? 0;
-        case 'timer':
-          return Number(
-            getStartTimeMinutesDiff(task.planned_start_local, task.actual_started_at, task.status) ??
-              0
-          );
-        case 'start':
-          return parseDate(task.actual_started_at)?.getTime() ?? 0;
-        case 'finish':
-          return parseDate(task.completed_at)?.getTime() ?? 0;
-        case 'forecast':
-          return Number(task.estimated_minutes ?? 0);
-        case 'fact':
-          return Number(task.actual_minutes ?? 0);
-        case 'category':
-          return String(categoryMap.get(String(task.category_id)) || '').toLowerCase();
-        case 'favorite':
-          return isFavorite(task.id) ? 1 : 0;
-        default:
-          return '';
-      }
-    };
-
-    result.sort((a, b) => {
-      const valueA = getSortValue(a, sortBy);
-      const valueB = getSortValue(b, sortBy);
-
-      if (typeof valueA === 'string' || typeof valueB === 'string') {
-        return sortOrder === 'asc'
-          ? valueA.localeCompare(valueB, 'ru')
-          : valueB.localeCompare(valueA, 'ru');
-      }
-
-      return sortOrder === 'asc' ? valueA - valueB : valueB - valueA;
-    });
-
-    return result;
-  }, [tasks, categoryFilter, statusFilter, sortBy, sortOrder, categoryMap, datePreset, isFavorite]);
+  const visibleTasks = tasks || [];
 
   const requestTaskAction = async (taskId, action) => {
     setActionLoading((prev) => ({ ...prev, [taskId]: action }));
@@ -405,7 +332,16 @@ const Tasks = () => {
         throw new Error(`Ошибка выполнения действия "${action}": ${response.status}`);
       }
 
-      await fetchTasks?.();
+      await fetchTasks({
+        skip: (currentPage - 1) * (limit || 20),
+        limit: limit || 20,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
+        category_id: categoryFilter !== 'all' ? categoryFilter : undefined,
+        date_preset: datePreset === 'all' ? undefined : datePreset,
+        sort_by: SORT_FIELD_MAP[sortBy],
+        sort_order: sortOrder,
+      });
+
     } catch (err) {
       console.error(err);
       alert(err.message || 'Ошибка выполнения действия');
@@ -414,19 +350,21 @@ const Tasks = () => {
     }
   };
 
-  const toggleSort = (column) => {
-    if (sortBy === column) {
-      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
-    } else {
-      setSortBy(column);
-      setSortOrder('asc');
-    }
-  };
+    const toggleSort = (field) => {
+      if (!SORT_FIELD_MAP[field]) return;
 
-  const getSortIndicator = (column) => {
-    if (sortBy !== column) return '↕';
-    return sortOrder === 'asc' ? '↑' : '↓';
-  };
+      if (sortBy === field) {
+        setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      } else {
+        setSortBy(field);
+        setSortOrder('asc');
+      }
+    };
+
+        const getSortIndicator = (field) => {
+          if (sortBy !== field) return '↕';
+          return sortOrder === 'asc' ? '▲' : '▼';
+        };
 
   const getTaskActionButtons = (task) => {
     const loadingAction = actionLoading[task.id] || '';
@@ -515,6 +453,39 @@ const Tasks = () => {
 
   const headerInfoText = `${currentDateLabel}   ·   ${weatherText}   ·   ${ratesText}`;
 
+  const modelInfoText = useMemo(() => {
+    if (!modelInfo) {
+      return 'ML: —';
+    }
+
+    if (modelInfo.source === 'fallback') {
+      return 'Для прогнозов используется fallback по медиане. ML-модель не найдена.';
+    }
+
+    const modelType = modelInfo.model_type || '—';
+    const trainedAt = modelInfo.trained_at
+      ? new Intl.DateTimeFormat('ru-RU', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(new Date(modelInfo.trained_at))
+      : '—';
+
+    const trainedOnCount =
+      modelInfo.trained_on_count !== null && modelInfo.trained_on_count !== undefined
+        ? modelInfo.trained_on_count
+        : '—';
+
+    const mae =
+      modelInfo.mae !== null && modelInfo.mae !== undefined
+        ? Number(modelInfo.mae).toFixed(2)
+        : '—';
+
+    return `Для прогнозов используется ML-модель типа ${modelType}, обучена ${trainedAt} на ${trainedOnCount} задачах. Средняя ошибка: ${mae}`;
+  }, [modelInfo]);
+
   const totalPages = Math.max(1, Math.ceil((total || 0) / (limit || 20)));
 
   const pagination = totalPages > 1 ? (
@@ -570,7 +541,8 @@ const Tasks = () => {
 
   return (
     <main className="tasks-page">
-      <header className="tasks-page__header">
+    <header className="tasks-page__header">
+      <div className="tasks-page__header-top">
         <div className="tasks-page__title-wrap">
           <h1 className="tasks-page__title">Список задач</h1>
           <p className="tasks-page__subtitle">Управление задачами, их статусами и параметрами.</p>
@@ -587,7 +559,14 @@ const Tasks = () => {
         >
           + Новая задача
         </button>
-      </header>
+      </div>
+
+      <div className="tasks-page__header-extra">
+        <div className="tasks-page__ml-info" aria-label="Информация о ML-модели">
+          {modelInfoText}
+        </div>
+      </div>
+    </header>
 
       <section className="tasks-page__controls" aria-label="Фильтры задач">
         <Dropdown
@@ -671,221 +650,159 @@ const Tasks = () => {
 
         {pagination}
 
-        {filteredAndSortedTasks.length === 0 ? (
+        {visibleTasks.length === 0 ? (
           <div className="tasks-page__message">Задач не найдено.</div>
         ) : (
           <div className="table-wrapper">
             <table className="tasks-table">
-              <thead>
-                <tr>
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('number')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('number');
-                      }
-                    }}
-                    aria-sort={sortBy === 'number' ? sortOrder : 'none'}
-                  >
-                    <span>№ <i>{getSortIndicator('number')}</i></span>
-                  </th>
+                <thead>
+                  <tr>
+                    <th scope="col">№</th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('title')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('title');
-                      }
-                    }}
-                    aria-sort={sortBy === 'title' ? sortOrder : 'none'}
-                  >
-                    <span>Название <i>{getSortIndicator('title')}</i></span>
-                  </th>
+                    <th
+                      scope="col"
+                      className="tasks-table__sortable"
+                      onClick={() => toggleSort('title')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSort('title');
+                        }
+                      }}
+                      aria-sort={sortBy === 'title' ? sortOrder : 'none'}
+                    >
+                      <span>Название <i>{getSortIndicator('title')}</i></span>
+                    </th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('status')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('status');
-                      }
-                    }}
-                    aria-sort={sortBy === 'status' ? sortOrder : 'none'}
-                  >
-                    <span>Статус <i>{getSortIndicator('status')}</i></span>
-                  </th>
+                    <th
+                      scope="col"
+                      className="tasks-table__sortable"
+                      onClick={() => toggleSort('status')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSort('status');
+                        }
+                      }}
+                      aria-sort={sortBy === 'status' ? sortOrder : 'none'}
+                    >
+                      <span>Статус <i>{getSortIndicator('status')}</i></span>
+                    </th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('priority')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('priority');
-                      }
-                    }}
-                    aria-sort={sortBy === 'priority' ? sortOrder : 'none'}
-                  >
-                    <span>Приоритет <i>{getSortIndicator('priority')}</i></span>
-                  </th>
+                    <th
+                      scope="col"
+                      className="tasks-table__sortable"
+                      onClick={() => toggleSort('priority')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSort('priority');
+                        }
+                      }}
+                      aria-sort={sortBy === 'priority' ? sortOrder : 'none'}
+                    >
+                      <span>Приоритет <i>{getSortIndicator('priority')}</i></span>
+                    </th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('plan')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('plan');
-                      }
-                    }}
-                    aria-sort={sortBy === 'plan' ? sortOrder : 'none'}
-                  >
-                    <span>План <i>{getSortIndicator('plan')}</i></span>
-                  </th>
+                    <th
+                      scope="col"
+                      className="tasks-table__sortable"
+                      onClick={() => toggleSort('plan')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSort('plan');
+                        }
+                      }}
+                      aria-sort={sortBy === 'plan' ? sortOrder : 'none'}
+                    >
+                      <span>План <i>{getSortIndicator('plan')}</i></span>
+                    </th>
+                    <th scope="col">Таймер</th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('timer')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('timer');
-                      }
-                    }}
-                    aria-sort={sortBy === 'timer' ? sortOrder : 'none'}
-                  >
-                    <span>Таймер <i>{getSortIndicator('timer')}</i></span>
-                  </th>
+                    <th
+                      scope="col"
+                      className="tasks-table__sortable"
+                      onClick={() => toggleSort('start')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSort('start');
+                        }
+                      }}
+                      aria-sort={sortBy === 'start' ? sortOrder : 'none'}
+                    >
+                      <span>Старт <i>{getSortIndicator('start')}</i></span>
+                    </th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('start')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('start');
-                      }
-                    }}
-                    aria-sort={sortBy === 'start' ? sortOrder : 'none'}
-                  >
-                    <span>Старт <i>{getSortIndicator('start')}</i></span>
-                  </th>
+                    <th
+                      scope="col"
+                      className="tasks-table__sortable"
+                      onClick={() => toggleSort('finish')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSort('finish');
+                        }
+                      }}
+                      aria-sort={sortBy === 'finish' ? sortOrder : 'none'}
+                    >
+                      <span>Финиш <i>{getSortIndicator('finish')}</i></span>
+                    </th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('finish')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('finish');
-                      }
-                    }}
-                    aria-sort={sortBy === 'finish' ? sortOrder : 'none'}
-                  >
-                    <span>Финиш <i>{getSortIndicator('finish')}</i></span>
-                  </th>
+                    <th
+                      scope="col"
+                      className="tasks-table__sortable"
+                      onClick={() => toggleSort('forecast')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSort('forecast');
+                        }
+                      }}
+                      aria-sort={sortBy === 'forecast' ? sortOrder : 'none'}
+                    >
+                      <span>Прогноз <i>{getSortIndicator('forecast')}</i></span>
+                    </th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('forecast')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('forecast');
-                      }
-                    }}
-                    aria-sort={sortBy === 'forecast' ? sortOrder : 'none'}
-                  >
-                    <span>Прогноз <i>{getSortIndicator('forecast')}</i></span>
-                  </th>
+                    <th
+                      scope="col"
+                      className="tasks-table__sortable"
+                      onClick={() => toggleSort('fact')}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSort('fact');
+                        }
+                      }}
+                      aria-sort={sortBy === 'fact' ? sortOrder : 'none'}
+                    >
+                      <span>Факт <i>{getSortIndicator('fact')}</i></span>
+                    </th>
 
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('fact')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('fact');
-                      }
-                    }}
-                    aria-sort={sortBy === 'fact' ? sortOrder : 'none'}
-                  >
-                    <span>Факт <i>{getSortIndicator('fact')}</i></span>
-                  </th>
-
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('category')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('category');
-                      }
-                    }}
-                    aria-sort={sortBy === 'category' ? sortOrder : 'none'}
-                  >
-                    <span>Категория <i>{getSortIndicator('category')}</i></span>
-                  </th>
-
-                  <th
-                    scope="col"
-                    className="tasks-table__sortable"
-                    onClick={() => toggleSort('favorite')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        toggleSort('favorite');
-                      }
-                    }}
-                    aria-sort={sortBy === 'favorite' ? sortOrder : 'none'}
-                  >
-                    <span>Избранное <i>{getSortIndicator('favorite')}</i></span>
-                  </th>
-                </tr>
-              </thead>
+                    <th scope="col">Категория</th>
+                    <th scope="col">Избранное</th>
+                  </tr>
+                </thead>
 
               <tbody>
-                {filteredAndSortedTasks.map((task, index) => {
+                {visibleTasks.map((task, index) => {
                   const favorite = isFavorite(task.id);
                   const favoriteLabel = favorite
                     ? `Убрать задачу "${task.title}" из избранного`
@@ -919,7 +836,6 @@ const Tasks = () => {
                       <td>{task.priority || '—'}</td>
 
                       <td>{formatDateTimeShort(task.planned_start_local)}</td>
-
                       <td>
                         {formatTimeToStart(
                           task.planned_start_local,

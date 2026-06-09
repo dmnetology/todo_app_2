@@ -3,8 +3,24 @@ import request from './http';
 export async function getTasks(params = {}) {
   const query = new URLSearchParams();
 
-  if (params.skip !== undefined) query.set('skip', params.skip);
-  if (params.limit !== undefined) query.set('limit', params.limit);
+  const allowedParams = [
+    'skip',
+    'limit',
+    'status',
+    'category_id',
+    'title',
+    'date_preset',
+    'planned_start_from',
+    'planned_start_to',
+    'sort_by',
+    'sort_order',
+  ];
+
+  allowedParams.forEach((key) => {
+    if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+      query.set(key, params[key]);
+    }
+  });
 
   const qs = query.toString();
   const url = qs ? `/tasks?${qs}` : '/tasks';

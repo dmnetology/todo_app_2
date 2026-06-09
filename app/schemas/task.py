@@ -16,6 +16,30 @@ class TaskStatus(str, Enum):
     cancelled = "cancelled"
 
 
+class TaskDatePreset(str, Enum):
+    all = "all"
+    all_from_today = "all_from_today"
+    today = "today"
+    tomorrow = "tomorrow"
+    week = "week"
+
+
+class TaskSortBy(str, Enum):
+    title = "title"
+    status = "status"
+    priority = "priority"
+    planned_start_at_utc = "planned_start_at_utc"
+    actual_started_at = "actual_started_at"
+    completed_at = "completed_at"
+    estimated_minutes = "estimated_minutes"
+    actual_minutes = "actual_minutes"
+
+
+class SortOrder(str, Enum):
+    asc = "asc"
+    desc = "desc"
+
+
 class TaskCreate(BaseModel):
     title: str = Field(min_length=2, max_length=200)
     description: str | None = None
@@ -84,11 +108,11 @@ class TaskRead(BaseModel):
         "from_attributes": True,
     }
 
+
 class TaskEstimateMetadataResponse(BaseModel):
     trained_at: datetime | None = None
     mae: float | None = None
     trained_on_count: int | None = None
-
 
 
 class TaskEstimateResponse(BaseModel):

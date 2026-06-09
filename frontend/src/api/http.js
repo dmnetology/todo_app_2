@@ -20,14 +20,6 @@ async function request(path, options = {}) {
     headers,
   });
 
-  let data = null;
-
-  try {
-    data = await response.json();
-  } catch {
-    data = null;
-  }
-
   if (response.status === 401) {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
@@ -36,9 +28,32 @@ async function request(path, options = {}) {
     throw new Error('Unauthorized');
   }
 
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+
+  let data = null;
+  if (isJson) {
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+  } else {
+    try {
+      data = await response.text();
+    } catch {
+      data = null;
+    }
+  }
+
   if (!response.ok) {
-    const message = data?.detail || data?.message || `HTTP error ${response.status}`;
-    throw new Error(message);
+    const message = Array.isArray(data?.detail)
+      ? data.detail
+          .map((item) => item.msg || item.message || JSON.stringify(item))
+          .join(', ')
+      : data?.detail || data?.message || data || `HTTP ${response.status}`;
+
+    throw new Error(String(message));
   }
 
   return data;
