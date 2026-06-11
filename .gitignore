@@ -11,3 +11,4 @@ test.db
 htmlcov/
 dist/
 build/
+structure.txt

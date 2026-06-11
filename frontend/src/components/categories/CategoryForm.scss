@@ -1,25 +1,25 @@
-.task-form {
+.category-form {
   display: flex;
   flex-direction: column;
   gap: 16px;
   color: var(--tasks-text);
 }
 
-.task-form__field {
+.category-form__field {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.task-form__label {
+.category-form__label {
   font-size: 13px;
   font-weight: 700;
   color: var(--tasks-text);
 }
 
-.task-form__input,
-.task-form__textarea {
+.category-form__input {
   width: 100%;
+  min-height: 44px;
   border: 1px solid var(--tasks-border-strong);
   border-radius: 12px;
   background: var(--tasks-input-bg);
@@ -32,51 +32,23 @@
     border-color 0.2s ease,
     box-shadow 0.2s ease,
     background-color 0.2s ease,
-    color 0.2s ease,
-    opacity 0.2s ease;
+    color 0.2s ease;
 }
 
-.task-form__input::placeholder,
-.task-form__textarea::placeholder {
+.category-form__input::placeholder {
   color: var(--tasks-input-placeholder);
 }
 
-.task-form__input:focus,
-.task-form__textarea:focus {
+.category-form__input:focus {
   border-color: var(--tasks-accent);
   box-shadow: var(--tasks-focus-ring-strong, 0 0 0 4px rgba(96, 165, 250, 0.18));
 }
 
-.task-form__input:hover,
-.task-form__textarea:hover {
+.category-form__input:hover {
   border-color: var(--tasks-accent-border);
 }
 
-.task-form__input:disabled,
-.task-form__textarea:disabled {
-  background: var(--tasks-message-bg);
-  color: var(--tasks-muted);
-  cursor: not-allowed;
-  opacity: 0.85;
-}
-
-.task-form__input[readonly] {
-  background: var(--tasks-message-bg);
-  color: var(--tasks-muted);
-}
-
-.task-form__textarea {
-  resize: vertical;
-  min-height: 110px;
-}
-
-.task-form__row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
-}
-
-.task-form__actions {
+.category-form__actions {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
@@ -84,7 +56,7 @@
   padding-top: 4px;
 }
 
-.task-form__button {
+.category-form__button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -106,39 +78,39 @@
     box-shadow 0.2s ease,
     background-color 0.2s ease,
     opacity 0.2s ease;
-  box-shadow: var(--shadow-primary);
+  box-shadow: var(--tasks-button-shadow, var(--shadow-primary));
 }
 
-.task-form__button:hover:not(:disabled) {
+.category-form__button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: var(--shadow-hover);
+  box-shadow: var(--tasks-button-shadow-hover, var(--shadow-hover));
 }
 
-.task-form__button:disabled {
+.category-form__button:disabled {
   opacity: 0.65;
   cursor: not-allowed;
   box-shadow: none;
 }
 
-.task-form__button--secondary {
+.category-form__button--secondary {
   background: var(--tasks-surface);
   color: var(--tasks-text);
   border-color: var(--tasks-border-strong);
   box-shadow: none;
 }
 
-.task-form__button--secondary:hover:not(:disabled) {
+.category-form__button--secondary:hover:not(:disabled) {
   background: var(--tasks-hover);
   border-color: var(--tasks-accent-border);
   box-shadow: none;
 }
 
 @media (max-width: 640px) {
-  .task-form__actions {
+  .category-form__actions {
     justify-content: stretch;
   }
 
-  .task-form__button {
+  .category-form__button {
     width: 100%;
   }
 }

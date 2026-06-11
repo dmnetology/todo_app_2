@@ -1,28 +1,28 @@
 // Colors
-$color-primary: #2563eb;
-$color-primary-hover: #1d4ed8;
-$color-primary-active: #1e40af;
+$color-primary: var(--color-primary);
+$color-primary-hover: var(--color-primary-hover);
+$color-primary-active: var(--color-primary-active, var(--color-primary-hover));
 
-$color-secondary: #f1f5f9;
-$color-secondary-hover: #e2e8f0;
-$color-secondary-active: #cbd5e1;
+$color-secondary: var(--color-secondary);
+$color-secondary-hover: var(--color-secondary-hover);
+$color-secondary-active: var(--color-secondary-active);
 
-$color-danger: #dc2626;
-$color-danger-light: #fee2e2;
+$color-danger: var(--color-danger);
+$color-danger-light: var(--color-danger-light);
 
-$color-success: #16a34a;
-$color-warning: #f59e0b;
+$color-success: var(--color-success);
+$color-warning: var(--color-warning);
 
-$color-bg: #f8fafc;
-$color-surface: #ffffff;
-$color-border: #e2e8f0;
+$color-bg: var(--color-bg);
+$color-surface: var(--color-surface);
+$color-border: var(--color-border);
 
-$color-text: #0f172a;
-$color-text-muted: #64748b;
-$color-text-light: #ffffff;
+$color-text: var(--color-text-h);
+$color-text-muted: var(--color-text);
+$color-text-light: var(--color-text-light, #ffffff);
 
-$color-disabled-bg: #e5e7eb;
-$color-disabled-text: #9ca3af;
+$color-disabled-bg: var(--color-disabled-bg);
+$color-disabled-text: var(--color-disabled-text);
 
 // Typography
 $font-family-main: Arial, Helvetica, sans-serif;
@@ -41,9 +41,9 @@ $radius-lg: 16px;
 $radius-xl: 24px;
 
 // Shadows
-$shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
-$shadow-md: 0 4px 12px rgba(15, 23, 42, 0.12);
-$shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.16);
+$shadow-sm: var(--shadow-sm);
+$shadow-md: var(--shadow-md);
+$shadow-lg: var(--shadow-lg);
 
 // Spacing
 $container-width: 1200px;

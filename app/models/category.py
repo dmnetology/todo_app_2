@@ -1,3 +1,5 @@
+# app/models/category.py
+
 from sqlalchemy import String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 

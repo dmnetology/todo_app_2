@@ -1,7 +1,7 @@
 .categories-page {
   padding: 28px 20px 40px;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-  color: #0f172a;
+  background: var(--tasks-page-bg);
+  color: var(--tasks-text);
 }
 
 .categories-page__header {
@@ -19,11 +19,12 @@
   line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.03em;
+  color: var(--tasks-text);
 }
 
 .categories-page__subtitle {
   margin: 10px 0 0;
-  color: #64748b;
+  color: var(--tasks-muted);
   font-size: 15px;
   line-height: 1.5;
 }
@@ -33,47 +34,51 @@
   align-items: center;
   justify-content: center;
   padding: 11px 16px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid var(--tasks-accent-border);
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tasks-accent-soft);
+  color: var(--tasks-accent);
   font-weight: 700;
   cursor: pointer;
   transition:
     background-color 0.2s ease,
     transform 0.2s ease,
-    border-color 0.2s ease;
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: var(--tasks-shadow-sm);
 }
 
 .categories-page__create-button:hover {
-  background: #dbeafe;
-  border-color: #93c5fd;
+  background: var(--tasks-accent-soft-hover);
+  border-color: var(--tasks-accent-border);
   transform: translateY(-1px);
+  box-shadow: var(--tasks-shadow-md);
 }
 
 .categories-page__error,
 .categories-page__message {
   padding: 18px 20px;
   border-radius: 16px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+  background: var(--tasks-surface);
+  border: 1px solid var(--tasks-border);
+  box-shadow: var(--tasks-shadow-sm);
   font-size: 15px;
+  color: var(--tasks-text);
 }
 
 .categories-page__error {
-  color: #b91c1c;
-  background: #fef2f2;
-  border-color: #fecaca;
+  color: var(--tasks-error-text);
+  background: var(--tasks-error-bg);
+  border-color: var(--tasks-error-border);
 }
 
 .categories-page__panel {
   margin-bottom: 22px;
   padding: 22px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tasks-border);
   border-radius: 22px;
-  background: #ffffff;
-  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+  background: var(--tasks-surface);
+  box-shadow: var(--tasks-shadow-md);
 }
 
 .categories-page__panel-title {
@@ -81,6 +86,7 @@
   font-size: 22px;
   line-height: 1.2;
   font-weight: 800;
+  color: var(--tasks-text);
 }
 
 .categories-list {
@@ -94,20 +100,22 @@
   justify-content: space-between;
   gap: 16px;
   padding: 18px 20px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--tasks-border);
   border-radius: 18px;
-  background: #ffffff;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  background: var(--tasks-surface);
+  box-shadow: var(--tasks-shadow-sm);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
-    border-color 0.18s ease;
+    border-color 0.18s ease,
+    background-color 0.18s ease;
 }
 
 .category-card:hover {
   transform: translateY(-1px);
-  border-color: #cbd5e1;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+  border-color: var(--tasks-border-strong);
+  box-shadow: var(--tasks-shadow-md);
+  background: var(--tasks-hover);
 }
 
 .category-card__main {
@@ -118,7 +126,7 @@
   margin: 0;
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--tasks-text);
   word-break: break-word;
 }
 
@@ -142,7 +150,8 @@
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .category-card__button:hover {
@@ -150,25 +159,25 @@
 }
 
 .category-card__button--secondary {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #334155;
+  background: var(--tasks-surface-2);
+  border-color: var(--tasks-border-strong);
+  color: var(--tasks-text);
 }
 
 .category-card__button--secondary:hover {
-  background: #eef2ff;
-  border-color: #c7d2fe;
+  background: var(--tasks-hover);
+  border-color: var(--tasks-accent-border);
 }
 
 .category-card__button--danger {
-  background: #fff1f2;
-  border-color: #fecdd3;
-  color: #be123c;
+  background: var(--tasks-error-bg);
+  border-color: var(--tasks-error-border);
+  color: var(--tasks-error-text);
 }
 
 .category-card__button--danger:hover {
-  background: #ffe4e6;
-  border-color: #fda4af;
+  background: color-mix(in srgb, var(--tasks-error-bg) 88%, white 12%);
+  border-color: color-mix(in srgb, var(--tasks-error-border) 80%, white 20%);
 }
 
 .category-form {
@@ -184,7 +193,7 @@
 .category-form__label {
   font-size: 13px;
   font-weight: 700;
-  color: #334155;
+  color: var(--tasks-text);
 }
 
 .category-form__input {
@@ -192,19 +201,24 @@
   min-height: 46px;
   padding: 11px 14px;
   border-radius: 12px;
-  border: 1px solid #dbe3ee;
-  background: #ffffff;
-  color: #0f172a;
+  border: 1px solid var(--tasks-border-strong);
+  background: var(--tasks-input-bg);
+  color: var(--tasks-input-text);
   font-size: 15px;
   outline: none;
   transition:
     border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.category-form__input::placeholder {
+  color: var(--tasks-input-placeholder);
 }
 
 .category-form__input:focus {
-  border-color: #60a5fa;
-  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15);
+  border-color: var(--tasks-accent);
+  box-shadow: var(--tasks-focus-ring-strong);
 }
 
 .category-form__actions {
@@ -222,7 +236,7 @@
   padding: 10px 16px;
   border-radius: 999px;
   border: 1px solid transparent;
-  background: #2563eb;
+  background: var(--tasks-accent);
   color: #ffffff;
   font-weight: 700;
   cursor: pointer;
@@ -230,12 +244,13 @@
     background-color 0.2s ease,
     transform 0.2s ease,
     box-shadow 0.2s ease;
+  box-shadow: var(--tasks-button-shadow);
 }
 
 .category-form__button:hover {
-  background: #1d4ed8;
+  background: var(--tasks-accent-hover);
   transform: translateY(-1px);
-  box-shadow: 0 10px 18px rgba(37, 99, 235, 0.18);
+  box-shadow: var(--tasks-button-shadow-hover);
 }
 
 .category-form__button:disabled,
@@ -248,14 +263,15 @@
 }
 
 .category-form__button--secondary {
-  background: #f8fafc;
-  color: #334155;
-  border-color: #cbd5e1;
+  background: var(--tasks-surface-2);
+  color: var(--tasks-text);
+  border-color: var(--tasks-border-strong);
+  box-shadow: none;
 }
 
 .category-form__button--secondary:hover {
-  background: #eef2ff;
-  border-color: #c7d2fe;
+  background: var(--tasks-hover);
+  border-color: var(--tasks-accent-border);
   box-shadow: none;
 }
 

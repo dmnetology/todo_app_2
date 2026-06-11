@@ -40,6 +40,18 @@ function AppContent() {
   const navigate = useNavigate();
   const { fetchTasks, clearTasks } = useTasks();
 
+  const getInitialTheme = () => {
+    const savedTheme = localStorage.getItem('theme');
+
+    if (savedTheme === 'light' || savedTheme === 'dark') {
+      return savedTheme;
+    }
+
+    return 'light';
+  };
+
+  const [theme, setTheme] = useState(getInitialTheme);
+
   const [isAuthenticated, setIsAuthenticated] = useState(
     !!localStorage.getItem('access_token')
   );
@@ -104,6 +116,11 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    }, [theme]);
+
+  useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
 
@@ -151,6 +168,8 @@ function AppContent() {
         user={user}
         isOnline={isOnline}
         onLogout={handleLogout}
+        theme={theme}
+        onToggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
       />
 
       {!isOnline && (

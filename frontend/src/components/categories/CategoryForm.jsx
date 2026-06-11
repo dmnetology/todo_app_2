@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import './CategoryForm.scss';
 
 const CategoryForm = ({
   initialValues = null,

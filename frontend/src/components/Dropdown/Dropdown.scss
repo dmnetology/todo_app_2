@@ -1,14 +1,12 @@
-@use '../../styles/base/variables' as *;
-
 .dropdown {
   width: 100%;
 
   &__label {
     display: block;
     margin-bottom: 8px;
-    font-size: $font-size-sm;
+    font-size: 14px;
     font-weight: 600;
-    color: $color-text;
+    color: var(--tasks-text);
   }
 
   &__select {
@@ -16,34 +14,53 @@
     min-height: 44px;
     padding: 10px 40px 10px 14px;
 
-    border: 1px solid $color-border;
-    border-radius: $radius-md;
+    border: 1px solid var(--tasks-border-strong);
+    border-radius: 12px;
 
-    background-color: $color-surface;
-    color: $color-text;
+    background-color: var(--tasks-input-bg);
+    color: var(--tasks-input-text);
 
     cursor: pointer;
     transition:
-      border-color $transition-base,
-      box-shadow $transition-base;
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease,
+      color 0.2s ease;
+
+    outline: none;
 
     &:focus {
-      outline: none;
-      border-color: $color-primary;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+      border-color: var(--tasks-accent);
+      box-shadow: var(--tasks-focus-ring);
     }
+
+    &:hover {
+      border-color: var(--tasks-accent-border);
+    }
+  }
+
+  &__select option {
+    background-color: var(--tasks-input-bg);
+    color: var(--tasks-input-text);
   }
 
   &--error {
     .dropdown__select {
-      border-color: $color-danger;
-      background-color: $color-danger-light;
+      border-color: var(--tasks-error-border);
+      background-color: var(--tasks-error-bg);
+      color: var(--tasks-error-text);
     }
+  }
+
+  &__help {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--tasks-muted);
   }
 
   &__error {
     margin-top: 6px;
-    font-size: $font-size-sm;
-    color: $color-danger;
+    font-size: 13px;
+    color: var(--tasks-error-text);
   }
 }

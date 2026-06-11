@@ -8,13 +8,13 @@
   &__control {
     width: 18px;
     height: 18px;
-    accent-color: $color-primary;
+    accent-color: var(--tasks-accent);
     cursor: pointer;
   }
 
   &__label {
-    font-size: $font-size-base;
-    color: $color-text;
+    font-size: 14px;
+    color: var(--tasks-text);
   }
 
   &--disabled {
@@ -27,7 +27,7 @@
 
     .checkbox__label,
     .radio__label {
-      color: $color-disabled-text;
+      color: var(--tasks-muted);
     }
   }
 }

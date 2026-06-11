@@ -1,14 +1,12 @@
-@use '../../styles/base/variables' as *;
-
 .input {
   width: 100%;
 
   &__label {
     display: block;
     margin-bottom: 8px;
-    font-size: $font-size-sm;
+    font-size: 14px;
     font-weight: 600;
-    color: $color-text;
+    color: var(--tasks-text);
   }
 
   &__control-wrapper {
@@ -21,23 +19,31 @@
     min-height: 44px;
     padding: 10px 14px;
 
-    background-color: $color-surface;
-    color: $color-text;
+    background-color: var(--tasks-input-bg);
+    color: var(--tasks-input-text);
 
-    border: 1px solid $color-border;
-    border-radius: $radius-md;
+    border: 1px solid var(--tasks-border-strong);
+    border-radius: 12px;
 
     transition:
-      border-color $transition-base,
-      box-shadow $transition-base;
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease,
+      color 0.2s ease;
+
+    outline: none;
 
     &::placeholder {
-      color: $color-text-muted;
+      color: var(--tasks-input-placeholder);
     }
 
     &:focus {
-      border-color: $color-primary;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+      border-color: var(--tasks-accent);
+      box-shadow: var(--tasks-focus-ring);
+    }
+
+    &:hover {
+      border-color: var(--tasks-accent-border);
     }
   }
 
@@ -46,7 +52,7 @@
     top: 50%;
     left: 14px;
     transform: translateY(-50%);
-    color: $color-text-muted;
+    color: var(--tasks-muted);
     pointer-events: none;
   }
 
@@ -54,20 +60,28 @@
     padding-left: 42px;
   }
 
+  &__help {
+    display: block;
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--tasks-muted);
+  }
+
   &__error {
     display: none;
     margin-top: 6px;
-    font-size: $font-size-sm;
-    color: $color-danger;
+    font-size: 13px;
+    color: var(--tasks-error-text);
   }
 
   &--error {
     .input__control {
-      border-color: $color-danger;
-      background-color: $color-danger-light;
+      border-color: var(--tasks-error-border);
+      background-color: var(--tasks-error-bg);
+      color: var(--tasks-error-text);
 
       &:focus {
-        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+        box-shadow: var(--tasks-error-focus-ring, 0 0 0 3px rgba(220, 38, 38, 0.2));
       }
     }
 

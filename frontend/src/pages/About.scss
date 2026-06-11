@@ -2,14 +2,15 @@
   padding: 24px;
   max-width: 1280px;
   margin: 0 auto;
+  color: var(--tasks-text);
 }
 
 .about-page__intro,
 .about-page__section {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--tasks-surface);
+  border: 1px solid var(--tasks-border);
   border-radius: 18px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--tasks-shadow-md);
 }
 
 .about-page__intro {
@@ -25,8 +26,8 @@
   margin-bottom: 12px;
   padding: 6px 12px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tasks-accent-soft);
+  color: var(--tasks-accent);
   font-size: 12px;
   font-weight: 700;
 }
@@ -36,14 +37,14 @@
   font-size: 34px;
   line-height: 1.15;
   font-weight: 800;
-  color: #111827;
+  color: var(--tasks-text);
 }
 
 .about-page__text {
   margin: 0;
   font-size: 15px;
   line-height: 1.7;
-  color: #4b5563;
+  color: var(--tasks-muted);
 }
 
 .about-page__facts {
@@ -54,8 +55,8 @@
 .about-page__fact {
   padding: 18px;
   border-radius: 16px;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-  border: 1px solid #e5e7eb;
+  background: var(--tasks-surface-2);
+  border: 1px solid var(--tasks-border);
 }
 
 .about-page__fact-value {
@@ -63,12 +64,12 @@
   margin-bottom: 4px;
   font-size: 18px;
   font-weight: 800;
-  color: #111827;
+  color: var(--tasks-text);
 }
 
 .about-page__fact-label {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--tasks-muted);
 }
 
 .about-page__section {
@@ -80,7 +81,7 @@
   margin: 0 0 16px;
   font-size: 26px;
   line-height: 1.2;
-  color: #111827;
+  color: var(--tasks-text);
   font-weight: 800;
 }
 
@@ -93,22 +94,22 @@
 .about-page__card {
   padding: 18px;
   border-radius: 16px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--tasks-surface-2);
+  border: 1px solid var(--tasks-border);
 }
 
 .about-page__card-title {
   margin: 0 0 8px;
   font-size: 16px;
   font-weight: 800;
-  color: #111827;
+  color: var(--tasks-text);
 }
 
 .about-page__card-text {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: #4b5563;
+  color: var(--tasks-muted);
 }
 
 .about-page__section--split {
@@ -123,20 +124,20 @@
 
 .about-page__panel {
   padding: 24px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--tasks-surface);
+  border: 1px solid var(--tasks-border);
   border-radius: 18px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--tasks-shadow-md);
 }
 
 .about-page__panel--accent {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: var(--tasks-surface-gradient);
 }
 
 .about-page__list {
   margin: 0;
   padding-left: 18px;
-  color: #4b5563;
+  color: var(--tasks-muted);
   line-height: 1.9;
   font-size: 15px;
 }

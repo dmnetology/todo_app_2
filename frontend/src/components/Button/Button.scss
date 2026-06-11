@@ -1,24 +1,25 @@
-@use '../../styles/base/variables' as *;
-
 .button {
   display: inline-flex;
   justify-content: center;
   align-items: center;
   gap: 8px;
 
-  border-radius: $radius-md;
+  border-radius: 12px;
   font-weight: 600;
   border: 1px solid transparent;
-  transition:
-    background-color $transition-base,
-    border-color $transition-base,
-    color $transition-base,
-    box-shadow $transition-base,
-    transform $transition-base;
 
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.1s ease;
+
+  cursor: pointer;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: var(--tasks-focus-ring);
   }
 
   &:active {
@@ -26,56 +27,60 @@
   }
 
   &--primary {
-    background-color: $color-primary;
-    color: $color-text-light;
+    background-color: var(--tasks-accent);
+    color: var(--color-text-inverse);
 
     &:hover {
-      background-color: $color-primary-hover;
+      background-color: color-mix(in srgb, var(--tasks-accent) 90%, black 10%);
     }
 
     &:active {
-      background-color: $color-primary-active;
+      background-color: color-mix(in srgb, var(--tasks-accent) 82%, black 18%);
     }
   }
 
   &--secondary {
-    background-color: $color-secondary;
-    color: $color-text;
-    border-color: $color-border;
+    background-color: var(--tasks-surface);
+    color: var(--tasks-text);
+    border-color: var(--tasks-border-strong);
 
     &:hover {
-      background-color: $color-secondary-hover;
+      background-color: var(--tasks-hover);
     }
 
     &:active {
-      background-color: $color-secondary-active;
+      background-color: color-mix(in srgb, var(--tasks-surface) 88%, var(--tasks-accent) 12%);
     }
   }
 
   &--disabled,
   &:disabled {
-    background-color: $color-disabled-bg;
-    color: $color-disabled-text;
+    background-color: var(--tasks-message-bg);
+    color: var(--tasks-muted);
+    border-color: var(--tasks-border);
     cursor: not-allowed;
     pointer-events: none;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.7;
   }
 
   &--small {
     min-height: 32px;
     padding: 6px 12px;
-    font-size: $font-size-sm;
+    font-size: 13px;
   }
 
   &--medium {
     min-height: 40px;
     padding: 9px 18px;
-    font-size: $font-size-base;
+    font-size: 14px;
   }
 
   &--large {
     min-height: 48px;
     padding: 12px 24px;
-    font-size: $font-size-md;
+    font-size: 15px;
   }
 
   &--full {

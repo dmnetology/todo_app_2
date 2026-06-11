@@ -2,6 +2,7 @@
   padding: 24px;
   max-width: 1280px;
   margin: 0 auto;
+  color: var(--tasks-text);
 }
 
 .home-page__hero {
@@ -15,10 +16,10 @@
 .home-page__hero-content,
 .home-page__hero-card,
 .home-page__section {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: var(--tasks-surface);
+  border: 1px solid var(--tasks-border);
   border-radius: 18px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--tasks-shadow-sm);
 }
 
 .home-page__hero-content {
@@ -30,11 +31,12 @@
   margin-bottom: 12px;
   padding: 6px 12px;
   border-radius: 999px;
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--tasks-accent-soft);
+  color: var(--tasks-accent);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.02em;
+  border: 1px solid var(--tasks-accent-border);
 }
 
 .home-page__title {
@@ -42,7 +44,7 @@
   font-size: 38px;
   line-height: 1.1;
   font-weight: 800;
-  color: #111827;
+  color: var(--tasks-text);
   letter-spacing: -0.03em;
 }
 
@@ -51,7 +53,7 @@
   max-width: 700px;
   font-size: 16px;
   line-height: 1.7;
-  color: #4b5563;
+  color: var(--tasks-muted);
 }
 
 .home-page__actions {
@@ -70,7 +72,12 @@
   font-size: 14px;
   font-weight: 700;
   text-decoration: none;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .home-page__button:hover {
@@ -78,16 +85,24 @@
 }
 
 .home-page__button--primary {
-  background: linear-gradient(180deg, #eff6ff 0%, #dbeafe 100%);
-  border: 1px solid #93c5fd;
-  color: #1d4ed8;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  background: var(--tasks-accent-soft);
+  border: 1px solid var(--tasks-accent-border);
+  color: var(--tasks-accent);
+  box-shadow: var(--tasks-shadow-sm);
+}
+
+.home-page__button--primary:hover {
+  background: var(--tasks-accent-soft-hover);
 }
 
 .home-page__button--secondary {
-  background: #ffffff;
-  border: 1px solid #d1d5db;
-  color: #374151;
+  background: var(--tasks-surface);
+  border: 1px solid var(--tasks-border-strong);
+  color: var(--tasks-text);
+}
+
+.home-page__button--secondary:hover {
+  background: var(--tasks-hover);
 }
 
 .home-page__hero-card {
@@ -99,21 +114,21 @@
 .home-page__stat {
   padding: 16px 18px;
   border-radius: 14px;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
-  border: 1px solid #e5e7eb;
+  background: var(--tasks-surface-alt);
+  border: 1px solid var(--tasks-border);
 }
 
 .home-page__stat-value {
   display: block;
   font-size: 18px;
   font-weight: 800;
-  color: #111827;
+  color: var(--tasks-text);
   margin-bottom: 4px;
 }
 
 .home-page__stat-label {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--tasks-muted);
 }
 
 .home-page__section {
@@ -129,13 +144,13 @@
   margin: 0 0 8px;
   font-size: 26px;
   line-height: 1.2;
-  color: #111827;
+  color: var(--tasks-text);
   font-weight: 800;
 }
 
 .home-page__section-text {
   margin: 0;
-  color: #6b7280;
+  color: var(--tasks-muted);
   font-size: 15px;
 }
 
@@ -148,26 +163,26 @@
 .home-page__card {
   padding: 18px;
   border-radius: 16px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--tasks-surface-alt);
+  border: 1px solid var(--tasks-border);
 }
 
 .home-page__card-title {
   margin: 0 0 8px;
   font-size: 16px;
   font-weight: 800;
-  color: #111827;
+  color: var(--tasks-text);
 }
 
 .home-page__card-text {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: #4b5563;
+  color: var(--tasks-muted);
 }
 
 .home-page__section--highlight {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  background: var(--tasks-surface-gradient);
 }
 
 .home-page__timeline {
@@ -187,22 +202,22 @@
   height: 12px;
   margin-top: 6px;
   border-radius: 50%;
-  background: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.12);
+  background: var(--tasks-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tasks-accent) 15%, transparent);
 }
 
 .home-page__timeline-title {
   margin: 0 0 6px;
   font-size: 16px;
   font-weight: 800;
-  color: #111827;
+  color: var(--tasks-text);
 }
 
 .home-page__timeline-text {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: #4b5563;
+  color: var(--tasks-muted);
 }
 
 @media (max-width: 1100px) {

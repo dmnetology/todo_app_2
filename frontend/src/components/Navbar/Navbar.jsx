@@ -3,7 +3,14 @@ import { NavLink } from 'react-router-dom';
 import Button from '../Button/Button';
 import './Navbar.scss';
 
-function Navbar({ isAuthenticated, user, isOnline, onLogout }) {
+function Navbar({
+  isAuthenticated,
+  user,
+  isOnline,
+  onLogout,
+  theme,
+  onToggleTheme,
+}) {
   const [time, setTime] = useState('');
 
   useEffect(() => {
@@ -116,6 +123,21 @@ function Navbar({ isAuthenticated, user, isOnline, onLogout }) {
               Вход
             </NavLink>
           )}
+
+          <button
+            type="button"
+            className={`theme-toggle ${theme === 'dark' ? 'theme-toggle--dark' : ''}`}
+            onClick={onToggleTheme}
+            aria-label={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+          >
+            <span className="theme-toggle__track">
+              <span className="theme-toggle__thumb">
+                <span className="theme-toggle__icon" aria-hidden="true">
+                  {theme === 'dark' ? '🌙' : '☀️'}
+                </span>
+              </span>
+            </span>
+          </button>
         </div>
       </div>
     </header>
