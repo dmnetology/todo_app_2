@@ -104,7 +104,7 @@ function Home() {
             <div>
               <h3 className="home-page__timeline-title">Единый стиль</h3>
               <p className="home-page__timeline-text">
-                Все страницы оформлены в одной дизайн-системе, без визуального шума и перегрузки.
+                Все страницы оформлены в одном стиле, без визуальной перегрузки.
               </p>
             </div>
           </div>

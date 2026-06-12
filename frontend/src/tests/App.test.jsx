@@ -2,15 +2,44 @@ import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from '../App';
+import { getCurrentUser, refreshToken } from '../api/auth';
 
-// Мокаем TaskContext
+jest.mock('../api/auth', () => ({
+  getCurrentUser: jest.fn(),
+  refreshToken: jest.fn(),
+}));
+
+jest.mock('../components/Navbar/Navbar', () => {
+  return function MockNavbar({
+    isAuthenticated,
+    isOnline,
+    onLogout,
+    onToggleTheme,
+    theme,
+  }) {
+    return (
+      <div>
+        <div>Mock Navbar</div>
+        <div>{isOnline ? 'Онлайн' : 'Офлайн'}</div>
+        <div>{isAuthenticated ? 'Авторизован' : 'Не авторизован'}</div>
+        <div>{theme}</div>
+        <button onClick={onToggleTheme}>Переключить тему</button>
+        {isAuthenticated ? (
+          <button onClick={onLogout}>Выход</button>
+        ) : (
+          <div>Вход</div>
+        )}
+        {isAuthenticated && <div>Избранное</div>}
+      </div>
+    );
+  };
+});
+
 jest.mock('../context/TaskContext', () => {
   const React = require('react');
 
   return {
-    TaskProvider: ({ children }) => (
-      <div data-testid="mock-task-provider">{children}</div>
-    ),
+    TaskProvider: ({ children }) => <div>{children}</div>,
     useTasks: () => ({
       fetchTasks: jest.fn(),
       clearTasks: jest.fn(),
@@ -18,90 +47,111 @@ jest.mock('../context/TaskContext', () => {
   };
 });
 
+jest.mock('../pages/Home', () => () => <div>Home Page</div>);
+jest.mock('../pages/Tasks', () => () => <div>Tasks Page</div>);
+jest.mock('../pages/TaskDetails', () => () => <div>Task Details Page</div>);
+jest.mock('../pages/TaskCreate', () => () => <div>Task Create Page</div>);
+jest.mock('../pages/Categories', () => () => <div>Categories Page</div>);
+jest.mock('../pages/About', () => () => <div>About Page</div>);
+jest.mock('../pages/Login', () => {
+  return function MockLogin({ onLogin }) {
+    return (
+      <div>
+        Login Page
+        <button onClick={onLogin}>Login</button>
+      </div>
+    );
+  };
+});
+jest.mock('../pages/Favourites', () => () => <div>Favourites Page</div>);
+jest.mock('../pages/SyncPage', () => () => <div>Sync Page</div>);
+
+const createFakeJwt = () => {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = btoa(
+    JSON.stringify({
+      exp: Math.floor(Date.now() / 1000) + 60 * 60,
+    })
+  );
+  return `${header}.${payload}.signature`;
+};
+
 describe('App Component', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
     jest.clearAllMocks();
     window.history.pushState({}, '', '/');
-
-    global.fetch = jest.fn((url) => {
-      if (typeof url === 'string' && url.includes('/auth/me')) {
-        return Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              first_name: 'Ivan',
-              last_name: 'Ivanov',
-              username: 'Ivan',
-            }),
-        });
-      }
-
-      if (typeof url === 'string' && url.includes('/tasks')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve([]),
-        });
-      }
-
-      if (typeof url === 'string' && url.includes('/auth/logout')) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({}),
-        });
-      }
-
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({}),
-      });
+    Object.defineProperty(window.navigator, 'onLine', {
+      configurable: true,
+      value: true,
     });
   });
 
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
-
-  test('отображает основные пункты навигации', async () => {
-    render(<App />);
-
-    expect(await screen.findByText('Главная')).toBeInTheDocument();
-    expect(screen.getByText('Список задач')).toBeInTheDocument();
-    expect(screen.getByText('О нас')).toBeInTheDocument();
-  });
-
-  test('отображает кнопку "Вход" если пользователь не авторизован', async () => {
-    render(<App />);
-
-    expect(await screen.findByText('Вход')).toBeInTheDocument();
-    expect(screen.queryByText('Выход')).not.toBeInTheDocument();
-    expect(screen.queryByText('Избранное')).not.toBeInTheDocument();
-  });
-
-  test('отображает ссылку "Избранное" и кнопку "Выход" после аутентификации', async () => {
-    localStorage.setItem('access_token', 'fake-token');
-    localStorage.setItem('refresh_token', 'fake-refresh-token');
+  test('без токена на главной показывает Home Page', async () => {
+    getCurrentUser.mockResolvedValue(null);
 
     render(<App />);
 
-    expect(await screen.findByText('Избранное')).toBeInTheDocument();
-    expect(screen.getByText('Выход')).toBeInTheDocument();
-    expect(screen.queryByText('Вход')).not.toBeInTheDocument();
+    expect(await screen.findByText(/Home Page/i)).toBeInTheDocument();
+    expect(screen.getByText(/Вход/i)).toBeInTheDocument();
   });
 
-  test('при нажатии на "Выход" очищает токены и возвращает кнопку "Вход"', async () => {
-    localStorage.setItem('access_token', 'fake-token');
-    localStorage.setItem('refresh_token', 'fake-refresh-token');
-    localStorage.setItem('favorites', JSON.stringify([{ id: 1, title: 'Test task' }]));
+  test('без токена на /login показывает Login Page', async () => {
+    window.history.pushState({}, '', '/login');
+    getCurrentUser.mockResolvedValue(null);
+
+    render(<App />);
+
+    expect(await screen.findByText(/Login Page/i)).toBeInTheDocument();
+    expect(screen.getByText(/Вход/i)).toBeInTheDocument();
+  });
+
+  test('с валидным токеном на /tasks показывает Tasks Page', async () => {
+    window.history.pushState({}, '', '/tasks');
+
+    localStorage.setItem('access_token', createFakeJwt());
+    localStorage.setItem('refresh_token', 'valid-refresh');
+
+    getCurrentUser.mockResolvedValue({
+      id: 1,
+      username: 'Ivan',
+    });
+
+    refreshToken.mockResolvedValue({
+      access_token: createFakeJwt(),
+      refresh_token: 'new-refresh',
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText(/Tasks Page/i)).toBeInTheDocument();
+    expect(screen.getByText(/Авторизован/i)).toBeInTheDocument();
+    expect(screen.getByText(/Избранное/i)).toBeInTheDocument();
+  });
+
+  test('при нажатии на "Выход" очищает токены', async () => {
+    window.history.pushState({}, '', '/tasks');
+
+    localStorage.setItem('access_token', createFakeJwt());
+    localStorage.setItem('refresh_token', 'valid-refresh');
+    localStorage.setItem(
+      'favorites',
+      JSON.stringify([{ id: 1, title: 'Test task' }])
+    );
+
+    getCurrentUser.mockResolvedValue({
+      id: 1,
+      username: 'Ivan',
+    });
 
     const user = userEvent.setup();
 
     render(<App />);
 
-    expect(await screen.findByText('Выход')).toBeInTheDocument();
+    expect(await screen.findByText(/Выход/i)).toBeInTheDocument();
 
-    await user.click(screen.getByText('Выход'));
+    await user.click(screen.getByText(/Выход/i));
 
     await waitFor(() => {
       expect(localStorage.getItem('access_token')).toBeNull();
@@ -109,38 +159,54 @@ describe('App Component', () => {
       expect(localStorage.getItem('favorites')).toBeNull();
     });
 
-    expect(screen.getByText('Вход')).toBeInTheDocument();
-    expect(screen.queryByText('Выход')).not.toBeInTheDocument();
-    expect(screen.queryByText('Избранное')).not.toBeInTheDocument();
+    expect(screen.getByText(/Вход/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Избранное/i)).not.toBeInTheDocument();
   });
 
-  test('отображает статус сети "Онлайн"', async () => {
-    render(<App />);
+  test('при переходе в офлайн показывает предупреждение', async () => {
+    getCurrentUser.mockResolvedValue(null);
 
-    expect(await screen.findByText(/Онлайн/i)).toBeInTheDocument();
-  });
-
-  test('при переходе в офлайн отображает статус "Офлайн"', async () => {
     render(<App />);
 
     await act(async () => {
-        window.dispatchEvent(new Event('offline'));
+      window.dispatchEvent(new Event('offline'));
     });
 
-    expect(await screen.findByText(/Офлайн/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Нет подключения к интернету/i)
+    ).toBeInTheDocument();
   });
 
-  test('при восстановлении соединения отображает статус "Онлайн"', async () => {
+  test('при восстановлении соединения убирает предупреждение', async () => {
+    getCurrentUser.mockResolvedValue(null);
+
     render(<App />);
 
     await act(async () => {
-        window.dispatchEvent(new Event('offline'));
+      window.dispatchEvent(new Event('offline'));
     });
-    expect(await screen.findByText(/Офлайн/i)).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/Нет подключения к интернету/i)
+    ).toBeInTheDocument();
 
     await act(async () => {
-        window.dispatchEvent(new Event('online'));
+      window.dispatchEvent(new Event('online'));
     });
-    expect(await screen.findByText(/Онлайн/i)).toBeInTheDocument();
+
+    expect(
+      screen.queryByText(/Нет подключения к интернету/i)
+    ).not.toBeInTheDocument();
+  });
+
+  test('при неизвестном пути показывает 404', async () => {
+    window.history.pushState({}, '', '/unknown');
+    getCurrentUser.mockResolvedValue(null);
+
+    render(<App />);
+
+    expect(
+      await screen.findByText(/404: Страница не найдена/i)
+    ).toBeInTheDocument();
   });
 });

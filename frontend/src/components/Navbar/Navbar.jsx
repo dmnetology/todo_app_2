@@ -21,16 +21,27 @@ function Navbar({
         now.toLocaleTimeString('ru-RU', {
           hour: '2-digit',
           minute: '2-digit',
-          second: '2-digit',
         })
       );
     };
 
+    const getDelayToNextMinute = () => {
+      const now = new Date();
+      return (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+    };
+
     updateTime();
 
-    const timerId = setInterval(updateTime, 1000);
+    let intervalId;
+    const timeoutId = setTimeout(() => {
+      updateTime();
+      intervalId = setInterval(updateTime, 60000);
+    }, getDelayToNextMinute());
 
-    return () => clearInterval(timerId);
+    return () => {
+      clearTimeout(timeoutId);
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   return (
@@ -85,12 +96,11 @@ function Navbar({
           <NavLink
             to="/sync"
             className={({ isActive }) =>
-                `navbar__link ${isActive ? 'navbar__link--active' : ''}`
+              `navbar__link ${isActive ? 'navbar__link--active' : ''}`
             }
           >
             Синхронизация
           </NavLink>
-
         </nav>
 
         <div className="navbar__meta">
@@ -138,7 +148,11 @@ function Navbar({
             type="button"
             className={`theme-toggle ${theme === 'dark' ? 'theme-toggle--dark' : ''}`}
             onClick={onToggleTheme}
-            aria-label={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на тёмную тему'}
+            aria-label={
+              theme === 'dark'
+                ? 'Переключить на светлую тему'
+                : 'Переключить на тёмную тему'
+            }
           >
             <span className="theme-toggle__track">
               <span className="theme-toggle__thumb">

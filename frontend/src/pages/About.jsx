@@ -6,7 +6,7 @@ function About() {
       <section className="about-page__intro">
         <div className="about-page__intro-content">
           <span className="about-page__eyebrow">О проекте</span>
-          <h1 className="about-page__title">To-Do App — учебный проект с практической ценностью</h1>
+          <h1 className="about-page__title">To-Do App — учебный проект-практика</h1>
           <p className="about-page__text">
             Приложение создано для освоения современного full-stack подхода: backend на FastAPI,
             frontend на React, работа с JWT, Docker, миграциями и сервис-воркером для offline-сценариев.
@@ -60,6 +60,20 @@ function About() {
               Важные задачи можно выделять отдельно, чтобы они всегда оставались под рукой.
             </p>
           </article>
+
+          <article className="about-page__card">
+            <h3 className="about-page__card-title">Импорт/экспорт</h3>
+            <p className="about-page__card-text">
+              Удобный сервис импорта/экспорта задач с возможностью внешнего подключения по API.
+            </p>
+          </article>
+
+          <article className="about-page__card">
+            <h3 className="about-page__card-title">ML-прогноз</h3>
+            <p className="about-page__card-text">
+              Встроенный ML-сервис поможет спрогнозировать длительность задачи, чтобы учесть ее при планировании.
+            </p>
+          </article>
         </div>
       </section>
 
@@ -73,14 +87,15 @@ function About() {
             <li>Vite, JavaScript, Sass</li>
             <li>Docker, Docker Compose</li>
             <li>Service Worker для offline-режима</li>
+            <li>ML для предсказания</li>
           </ul>
         </div>
 
         <div className="about-page__panel about-page__panel--accent">
           <h2 className="about-page__section-title">Цель проекта</h2>
           <p className="about-page__text">
-            Создать не просто учебную демку, а полноценное приложение, которое можно развивать дальше:
-            добавлять роли, уведомления, календарь, повторяющиеся задачи и аналитику.
+            Создать учебный проект, который уже будет достаточно интересным и позволит развивать его дальше:
+            роли, уведомления, календарь, повторяющиеся задачи, аналитику, мобильную версию и др.
           </p>
         </div>
       </section>

@@ -68,12 +68,7 @@ function AppContent() {
     setUser(null);
   };
 
-  const loadCurrentUser = async () => {
-    const data = await getCurrentUser();
-    return data;
-  };
-
-    const checkAuth = async () => {
+  const checkAuth = async () => {
       setAuthChecking(true);
 
       try {
@@ -110,7 +105,7 @@ function AppContent() {
       } finally {
         setAuthChecking(false);
       }
-    };
+  };
 
   useEffect(() => {
     checkAuth();
