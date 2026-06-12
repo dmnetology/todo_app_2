@@ -139,10 +139,10 @@ def test_train_duration_model_accepted(monkeypatch):
             return self
 
         def predict(self, X):
-            return [10 for _ in X]
+            return [10 for _ in range(len(X))]
 
     monkeypatch.setattr("app.ml.training.build_pipeline", lambda: FakePipeline())
-    monkeypatch.setattr("app.ml.training.fallback_predict_task_duration", lambda **kwargs: 100)
+    monkeypatch.setattr("app.ml.training.fallback_predict_task_duration", lambda **kwargs: 1000)
     monkeypatch.setattr("app.ml.training.save_model_artifacts", lambda **kwargs: ("path/to/model.joblib", {}))
     monkeypatch.setattr("app.ml.training.deactivate_user_models", lambda db, user_id: None)
 
@@ -206,12 +206,13 @@ def test_train_duration_model_rejected(monkeypatch):
             return self
 
         def predict(self, X):
-            return [200 for _ in X]
+            return [200 for _ in range(len(X))]
 
     monkeypatch.setattr("app.ml.training.build_pipeline", lambda: FakePipeline())
     monkeypatch.setattr("app.ml.training.fallback_predict_task_duration", lambda **kwargs: 20)
     monkeypatch.setattr("app.ml.training.save_model_artifacts", lambda **kwargs: ("path/to/model.joblib", {}))
     monkeypatch.setattr("app.ml.training.deactivate_user_models", lambda db, user_id: None)
+    monkeypatch.setattr("app.ml.training.mean_absolute_error", lambda y_true, y_pred: 50)
 
     db = FakeDB()
     result = train_duration_model_for_user(db, user_id)

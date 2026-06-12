@@ -4,8 +4,11 @@ import React, {
   useEffect,
   useContext,
   useCallback,
+  useMemo,
 } from 'react';
+
 import { getTasks } from '../api/tasks';
+
 
 const TaskContext = createContext();
 
@@ -19,8 +22,13 @@ export const TaskProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   const [favorites, setFavorites] = useState(() => {
+  try {
     const savedFavorites = localStorage.getItem('favorites');
-    return savedFavorites ? JSON.parse(savedFavorites) : [];
+    const parsedFavorites = savedFavorites ? JSON.parse(savedFavorites) : [];
+    return Array.isArray(parsedFavorites) ? parsedFavorites : [];
+  } catch {
+    return [];
+  }
   });
 
   const fetchTasks = useCallback(async (params = {}) => {
@@ -73,27 +81,42 @@ export const TaskProvider = ({ children }) => {
     setTotal(0);
     setSkip(0);
     setLimit(20);
-    setLoading(false);
     setError(null);
   }, []);
 
+  const value = useMemo(
+    () => ({
+      tasks,
+      total,
+      skip,
+      limit,
+      loading,
+      error,
+      favorites,
+      addTaskToFavorites,
+      removeTaskFromFavorites,
+      isFavorite,
+      fetchTasks,
+      clearTasks,
+    }),
+    [
+      tasks,
+      total,
+      skip,
+      limit,
+      loading,
+      error,
+      favorites,
+      addTaskToFavorites,
+      removeTaskFromFavorites,
+      isFavorite,
+      fetchTasks,
+      clearTasks,
+    ]
+  );
+
   return (
-    <TaskContext.Provider
-      value={{
-        tasks,
-        total,
-        skip,
-        limit,
-        loading,
-        error,
-        favorites,
-        addTaskToFavorites,
-        removeTaskFromFavorites,
-        isFavorite,
-        fetchTasks,
-        clearTasks,
-      }}
-    >
+    <TaskContext.Provider value={value}>
       {children}
     </TaskContext.Provider>
   );

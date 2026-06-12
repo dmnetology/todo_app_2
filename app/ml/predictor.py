@@ -8,7 +8,6 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.ml.fallback import fallback_predict_task_duration
-from app.ml.features import task_to_feature_dict
 from app.ml.model_registry import (
     get_active_ml_model_record,
     load_model_artifacts,

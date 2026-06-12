@@ -1,14 +1,13 @@
 # app/services/task_service.py
 
-from datetime import datetime, timezone, date, time, timedelta
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException, status
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.category import Category
-from app.models.task import Task, TaskStatus
+from app.models.task import Task, TaskStatus, TaskPriority
 from app.models.task_pause import TaskPause
 from app.models.user import User
 from app.schemas.task import (
@@ -113,6 +112,10 @@ def _start_of_tomorrow_utc(now: datetime) -> datetime:
     return _start_of_day_utc(now) + timedelta(days=1)
 
 
+def _start_of_yesterday_utc(now: datetime) -> datetime:
+    return _start_of_day_utc(now) - timedelta(days=1)
+
+
 def _start_of_day_after_tomorrow_utc(now: datetime) -> datetime:
     return _start_of_day_utc(now) + timedelta(days=2)
 
@@ -138,36 +141,45 @@ def _apply_date_filter(
     date_preset: TaskDatePreset | None,
     planned_start_from: datetime | None,
     planned_start_to: datetime | None,
+    planned_start_timezone: str | None,
 ):
     now = _get_now()
 
     if date_preset and date_preset != TaskDatePreset.all:
-        if date_preset == TaskDatePreset.all_from_today:
-            query = query.filter(Task.planned_start_at_utc >= _start_of_day_utc(now))
-
-        elif date_preset == TaskDatePreset.today:
-            query = query.filter(
+        preset_filters = {
+            TaskDatePreset.all_from_today: (
+                Task.planned_start_at_utc >= _start_of_day_utc(now),
+            ),
+            TaskDatePreset.today: (
                 Task.planned_start_at_utc >= _start_of_day_utc(now),
                 Task.planned_start_at_utc < _start_of_next_day_utc(now),
-            )
-
-        elif date_preset == TaskDatePreset.tomorrow:
-            query = query.filter(
+            ),
+            TaskDatePreset.tomorrow: (
                 Task.planned_start_at_utc >= _start_of_tomorrow_utc(now),
                 Task.planned_start_at_utc < _start_of_day_after_tomorrow_utc(now),
-            )
-
-        elif date_preset == TaskDatePreset.week:
-            query = query.filter(
+            ),
+            TaskDatePreset.week: (
                 Task.planned_start_at_utc >= _start_of_day_utc(now),
                 Task.planned_start_at_utc < _start_of_week_after_next_utc(now),
-            )
+            ),
+            TaskDatePreset.yesterday: (
+                Task.planned_start_at_utc >= _start_of_yesterday_utc(now),
+                Task.planned_start_at_utc < _start_of_day_utc(now),
+            ),
+        }
+
+        if date_preset in preset_filters:
+            query = query.filter(*preset_filters[date_preset])
 
     if planned_start_from is not None:
-        query = query.filter(Task.planned_start_at_utc >= planned_start_from)
+        planned_start_from_utc = _local_to_utc(planned_start_from, planned_start_timezone)
+        if planned_start_from_utc is not None:
+            query = query.filter(Task.planned_start_at_utc >= planned_start_from_utc)
 
     if planned_start_to is not None:
-        query = query.filter(Task.planned_start_at_utc < planned_start_to)
+        planned_start_to_utc = _local_to_utc(planned_start_to, planned_start_timezone)
+        if planned_start_to_utc is not None:
+            query = query.filter(Task.planned_start_at_utc <= planned_start_to_utc)
 
     return query
 
@@ -247,6 +259,7 @@ def get_tasks(
     date_preset: TaskDatePreset | None = None,
     planned_start_from: datetime | None = None,
     planned_start_to: datetime | None = None,
+    planned_start_timezone: str | None = None,
     sort_by: TaskSortBy | None = None,
     sort_order: SortOrder | None = None,
 ) -> dict:
@@ -272,7 +285,7 @@ def get_tasks(
     if title:
         query = query.filter(Task.title.ilike(f"%{title.strip()}%"))
 
-    query = _apply_date_filter(query, date_preset, planned_start_from, planned_start_to)
+    query = _apply_date_filter(query, date_preset, planned_start_from, planned_start_to, planned_start_timezone)
     query = _apply_sorting(query, sort_by, sort_order)
 
     total = query.count()
@@ -507,3 +520,85 @@ def update_task_status(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail="Unsupported task status",
     )
+
+
+def create_task_from_import(
+    db: Session,
+    user: User,
+    *,
+    title: str,
+    description: str | None,
+    category_id: int | None,
+    priority: TaskPriority,
+    due_date: datetime | None,
+    planned_start_local: datetime,
+    planned_start_timezone: str,
+    status: TaskStatus,
+    actual_started_at: datetime | None = None,
+    completed_at: datetime | None = None,
+    is_completed: bool | None = None,
+) -> Task:
+    validate_category_owner(db, category_id, user.id)
+
+    planned_start_at_utc = _local_to_utc(planned_start_local, planned_start_timezone)
+    due_date_utc = _local_to_utc(due_date, planned_start_timezone)
+
+    prediction = predict_task_duration(
+        db=db,
+        user_id=user.id,
+        title=title,
+        category_id=category_id,
+        priority=priority.value if hasattr(priority, "value") else str(priority),
+        planned_weekday=planned_start_local.weekday(),
+        planned_hour=planned_start_local.hour,
+    )
+
+    task = Task(
+        title=title,
+        description=description,
+        category_id=category_id,
+        priority=priority,
+        due_date=due_date_utc,
+        planned_start_local=planned_start_local,
+        planned_start_timezone=planned_start_timezone,
+        planned_start_at_utc=planned_start_at_utc,
+        estimated_minutes=prediction.duration_minutes,
+        actual_minutes=None,
+        owner_id=user.id,
+        status=TaskStatus.new,
+        is_completed=False,
+        actual_started_at=None,
+        current_started_at=None,
+        completed_at=None,
+    )
+
+    db.add(task)
+    db.flush()
+
+    if status == TaskStatus.new:
+        return task
+
+    if status == TaskStatus.in_progress:
+        actual_started_at_utc = _local_to_utc(actual_started_at, planned_start_timezone)
+
+        task.status = TaskStatus.in_progress
+        task.actual_started_at = actual_started_at_utc
+        task.current_started_at = actual_started_at_utc
+        task.is_completed = False
+        return task
+
+    if status == TaskStatus.completed:
+        actual_started_at_utc = _local_to_utc(actual_started_at, planned_start_timezone)
+        completed_at_utc = _local_to_utc(completed_at, planned_start_timezone)
+
+        task.status = TaskStatus.completed
+        task.actual_started_at = actual_started_at_utc
+        task.completed_at = completed_at_utc
+        task.current_started_at = actual_started_at_utc
+        task.actual_minutes = int(
+            (completed_at_utc - actual_started_at_utc).total_seconds() // 60
+        )
+        task.is_completed = True
+        return task
+
+    raise ValueError(f"Unsupported status: {status}")

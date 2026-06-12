@@ -32,6 +32,7 @@ class TaskDatePreset(str, Enum):
     today = "today"
     tomorrow = "tomorrow"
     week = "week"
+    yesterday = 'yesterday'
 
 
 class TaskSortBy(str, Enum):

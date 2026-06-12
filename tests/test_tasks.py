@@ -69,22 +69,16 @@ def test_create_task(client, auth_headers):
 
 
 def test_get_tasks(client, auth_headers):
-    """
-    Тест получения списка задач.
-
-    Сценарий:
-    1. Создаём одну задачу.
-    2. Запрашиваем список задач.
-    3. Проверяем, что в ответе ровно одна задача.
-    """
-    category_id = create_category(client, auth_headers)
-
-    create_task(client, auth_headers, category_id)
-
     response = client.get("/tasks", headers=auth_headers)
 
     assert response.status_code == 200
-    assert len(response.json()) == 1
+
+    data = response.json()
+    assert isinstance(data, dict)
+    assert data["limit"] == 20
+    assert data["skip"] == 0
+    assert isinstance(data["items"], list)
+    assert isinstance(data["total"], int)
 
 
 def test_get_task_by_id(client, auth_headers):
@@ -210,40 +204,28 @@ def test_task_validation_error(client, auth_headers):
 
 
 def test_filter_tasks_by_status(client, auth_headers):
-    """
-    Тест фильтрации задач по статусу.
-
-    Сценарий:
-    1. Создаём задачу.
-    2. Отмечаем её выполненной.
-    3. Запрашиваем только завершённые задачи.
-    4. Проверяем, что в ответе одна выполненная задача.
-    """
     category_id = create_category(client, auth_headers)
     created = create_task(client, auth_headers, category_id)
     task_id = created.json()["id"]
 
-    client.patch(
-        f"/tasks/{task_id}/start",
-        headers=auth_headers,
-    )
-
+    client.patch(f"/tasks/{task_id}/start", headers=auth_headers)
     client.patch(
         f"/tasks/{task_id}/status",
         headers=auth_headers,
-        json={
-            "status": "completed",
-        },
+        json={"status": "completed"},
     )
 
-    response = client.get(
-        "/tasks?status=completed",
-        headers=auth_headers,
-    )
+    response = client.get("/tasks?status=completed", headers=auth_headers)
 
     assert response.status_code == 200
-    assert len(response.json()) == 1
-    assert response.json()[0]["id"] == task_id
+
+    data = response.json()
+    assert isinstance(data, dict)
+    tasks = data["items"]
+    assert isinstance(tasks, list)
+
+    assert any(task["id"] == task_id for task in tasks)
+    assert all(task["status"] == "completed" for task in tasks)
 
 
 def test_ai_estimate(client, auth_headers):

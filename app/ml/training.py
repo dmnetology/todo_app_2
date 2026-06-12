@@ -2,13 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-import joblib
-import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestRegressor
@@ -29,7 +25,7 @@ from app.models.ml_model import MLModel
 from app.models.task import Task
 
 
-MIN_TRAINING_SAMPLES = 51
+MIN_TRAINING_SAMPLES = 50
 DEFAULT_N_ESTIMATORS = 200
 RANDOM_STATE = 42
 

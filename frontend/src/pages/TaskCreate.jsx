@@ -10,6 +10,8 @@ const CATEGORIES_API_URL = 'http://localhost:8000/categories';
 const getClientTimezone = () =>
   Intl.DateTimeFormat().resolvedOptions().timeZone;
 
+export { getClientTimezone };
+
 const emptyTask = {
   title: '',
   description: '',
@@ -75,7 +77,7 @@ const getCopyInitialValues = (task) => ({
   description: task?.description ?? '',
   category_id: task?.category_id ?? '',
   priority: task?.priority ?? 'medium',
-  due_date: task?.due_date ?? '',
+  due_date: '',
   planned_start_local: '',
   planned_start_timezone: task?.planned_start_timezone ?? getClientTimezone(),
 });

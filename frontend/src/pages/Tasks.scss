@@ -184,10 +184,34 @@
 
 .tasks-table-section__title-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
+}
+
+.tasks-table-section__title-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.tasks-table-section__result-count {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--tasks-result-count-bg);
+  color: var(--tasks-result-count-text);
+  border: 1px solid var(--tasks-result-count-border);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .tasks-table-section__title {
@@ -238,6 +262,43 @@
   box-shadow:
     0 6px 16px rgba(37, 99, 235, 0.14),
     inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+
+.date-range-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--tasks-border);
+  background: var(--tasks-surface);
+}
+
+.date-range-filter__label {
+  font-size: 13px;
+  color: var(--tasks-text-secondary);
+  font-weight: 600;
+}
+
+.date-range-filter__input {
+  border: 1px solid var(--tasks-border);
+  background: transparent;
+  color: var(--tasks-text);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+}
+
+.date-range-filter__input:focus {
+  border-color: var(--tasks-accent);
+  box-shadow: 0 0 0 3px rgba(100, 120, 255, 0.15);
+}
+
+.date-range-filter__separator {
+  color: var(--tasks-text-secondary);
+  font-weight: 700;
 }
 
 .table-wrapper {
@@ -552,8 +613,18 @@
 }
 
 .time-overdue {
-  color: #dc2626;
-  font-weight: 700;
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.time-on-time {
+  color: var(--color-success);
+  font-weight: 600;
+}
+
+.time-overdue,
+.time-on-time {
+  white-space: nowrap;
 }
 
 .tasks-pagination {
@@ -630,6 +701,11 @@
   .tasks-table-section__title-row {
     align-items: flex-start;
   }
+
+  .tasks-table-section__title-meta {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 768px) {
@@ -645,6 +721,11 @@
   .tasks-table-section__title-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .tasks-table-section__title-meta {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .tasks-table-section__date-pills {

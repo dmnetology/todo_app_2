@@ -81,6 +81,16 @@ function Navbar({
           >
             Категории
           </NavLink>
+
+          <NavLink
+            to="/sync"
+            className={({ isActive }) =>
+                `navbar__link ${isActive ? 'navbar__link--active' : ''}`
+            }
+          >
+            Синхронизация
+          </NavLink>
+
         </nav>
 
         <div className="navbar__meta">

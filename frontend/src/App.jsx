@@ -19,6 +19,7 @@ const Categories = lazy(() => import('./pages/Categories'));
 const About = lazy(() => import('./pages/About'));
 const Login = lazy(() => import('./pages/Login'));
 const Favourites = lazy(() => import('./pages/Favourites'));
+const SyncPage = lazy(() => import('./pages/SyncPage'));
 
 
 function isTokenExpired(token) {
@@ -214,6 +215,11 @@ function AppContent() {
           <Route
             path="/favourites"
             element={isAuthenticated ? <Favourites /> : <Navigate to="/login" replace />}
+          />
+
+          <Route
+            path="/sync"
+            element={isAuthenticated ? <SyncPage /> : <Navigate to="/login" replace />}
           />
 
           <Route path="*" element={<h2>404: Страница не найдена</h2>} />

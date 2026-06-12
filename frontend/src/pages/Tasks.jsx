@@ -4,6 +4,7 @@ import { useTasks } from '../context/TaskContext';
 import Dropdown from '../components/Dropdown/Dropdown';
 import './Tasks.scss';
 import { formatDateTimeShort, parseDate } from '../utils/datetime';
+import { getClientTimezone } from './TaskCreate';
 
 const TASKS_API_URL = 'http://localhost:8000/tasks';
 const FALLBACK_CITY = 'Набережные Челны';
@@ -79,15 +80,35 @@ const getStartTimeMinutesDiff = (planValue, actualStartedAt, status) => {
   return Math.round((planDate.getTime() - baseDate.getTime()) / 60000);
 };
 
+const formatDuration = (totalMinutes) => {
+  const absMinutes = Math.abs(totalMinutes);
+  const days = Math.floor(absMinutes / 1440);
+  const hours = Math.floor((absMinutes % 1440) / 60);
+  const minutes = absMinutes % 60;
+
+  if (absMinutes < 60) {
+    return `${minutes}мин`;
+  }
+
+  if (absMinutes < 1440) {
+    return `${hours}ч ${minutes}мин`;
+  }
+
+  return `${days}д ${hours}ч`;
+};
+
 const formatTimeToStart = (planValue, actualStartedAt, status) => {
   const diff = getStartTimeMinutesDiff(planValue, actualStartedAt, status);
   if (diff === null) return '—';
 
-  if (diff < 0) {
-    return <span className="time-overdue">-{Math.abs(diff)} мин.</span>;
-  }
+  const isOverdue = diff < 0;
 
-  return `${diff} мин.`;
+  return (
+    <span className={isOverdue ? 'time-overdue' : 'time-on-time'}>
+      {isOverdue ? '+' : '-'}
+      {formatDuration(diff)}
+    </span>
+  );
 };
 
 const getWeatherDescription = (code) => {
@@ -116,6 +137,23 @@ const getWeatherDescription = (code) => {
   return map[code] || '—';
 };
 
+
+const getCurrentWeekRange = () => {
+  const today = new Date();
+  const day = today.getDay(); // 0 = воскресенье, 1 = понедельник, ...
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+
+  const start = new Date(today);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(today.getDate() + diffToMonday);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+};
+
 const Tasks = () => {
   const navigate = useNavigate();
 
@@ -142,6 +180,9 @@ const Tasks = () => {
   const [sortOrder, setSortOrder] = useState('asc');
 
   const [datePreset, setDatePreset] = useState('all_from_today');
+  const [dateRange, setDateRange] = useState(null);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   const [weather, setWeather] = useState(null);
   const [weatherPlace, setWeatherPlace] = useState(FALLBACK_CITY);
@@ -233,6 +274,9 @@ const Tasks = () => {
         category_id: categoryFilter !== 'all' ? categoryFilter : undefined,
         title: debouncedSearchTitle || undefined,
         date_preset: datePreset === 'all' ? undefined : datePreset,
+        planned_start_from: dateFrom ? `${dateFrom}T00:00:00` : undefined,
+        planned_start_to: dateTo ? `${dateTo}T23:59:59` : undefined,
+        planned_start_timezone: getClientTimezone(),
         sort_by: SORT_FIELD_MAP[sortBy],
         sort_order: sortOrder,
       });
@@ -244,6 +288,8 @@ const Tasks = () => {
       statusFilter,
       debouncedSearchTitle,
       datePreset,
+      dateFrom,
+      dateTo,
       sortBy,
       sortOrder,
     ]);
@@ -328,6 +374,8 @@ const Tasks = () => {
 
   const visibleTasks = tasks || [];
 
+  const resultCountText = `Количество задач: ${total || 0}`;
+
   const requestTaskAction = async (taskId, action) => {
     setActionLoading((prev) => ({ ...prev, [taskId]: action }));
 
@@ -351,6 +399,8 @@ const Tasks = () => {
         category_id: categoryFilter !== 'all' ? categoryFilter : undefined,
         title: debouncedSearchTitle || undefined,
         date_preset: datePreset === 'all' ? undefined : datePreset,
+        planned_start_from: dateFrom ? `${dateFrom}T00:00:00` : undefined,
+        planned_start_to: dateTo ? `${dateTo}T23:59:59` : undefined,
         sort_by: SORT_FIELD_MAP[sortBy],
         sort_order: sortOrder,
       });
@@ -545,6 +595,17 @@ const Tasks = () => {
     );
   }
 
+    const handleDateFromChange = (value) => {
+      setDateFrom(value);
+      setDatePreset('all');
+    };
+
+    const handleDateToChange = (value) => {
+      setDateTo(value);
+      setDatePreset('all');
+    };
+
+
   return (
     <main className="tasks-page">
     <header className="tasks-page__header">
@@ -625,27 +686,79 @@ const Tasks = () => {
           <div className="tasks-table-section__title-row">
             <h2 className="tasks-table-section__title">Таблица задач</h2>
 
+            <div className="tasks-table-section__title-meta">
+              <div className="tasks-table-section__result-count" aria-label="Количество найденных задач">
+              {resultCountText}
+            </div>
+
+
             <div className="tasks-table-section__date-pills" aria-label="Фильтр по датам">
+              <div className="date-range-filter">
+                <span className="date-range-filter__label">С</span>
+                <input
+                  type="date"
+                  className="date-range-filter__input"
+                  value={dateFrom}
+                  onChange={(e) => handleDateFromChange(e.target.value)}
+                  aria-label="Дата начала"
+                />
+
+                <span className="date-range-filter__separator">—</span>
+
+                <span className="date-range-filter__label">По</span>
+                <input
+                  type="date"
+                  className="date-range-filter__input"
+                  value={dateTo}
+                  onChange={(e) => handleDateToChange(e.target.value)}
+                  aria-label="Дата окончания"
+                />
+              </div>
+
               <button
                 type="button"
                 className={`date-pill ${datePreset === 'all' ? 'is-active' : ''}`}
-                onClick={() => setDatePreset('all')}
-                >
+                onClick={() => {
+                  setDatePreset('all');
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+              >
                 Все
               </button>
 
-                <button
-                  type="button"
-                  className={`date-pill ${datePreset === 'all_from_today' ? 'is-active' : ''}`}
-                  onClick={() => setDatePreset('all_from_today')}
-                >
-                  От сегодня+
-                </button>
+              <button
+                type="button"
+                className={`date-pill ${datePreset === 'all_from_today' ? 'is-active' : ''}`}
+                onClick={() => {
+                  setDatePreset('all_from_today');
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+              >
+                Сегодня+
+              </button>
+
+              <button
+                type="button"
+                className={`date-pill ${datePreset === 'yesterday' ? 'is-active' : ''}`}
+                onClick={() => {
+                  setDatePreset('yesterday');
+                  setDateFrom('');
+                  setDateTo('');
+                }}
+              >
+                Вчера
+              </button>
 
               <button
                 type="button"
                 className={`date-pill ${datePreset === 'today' ? 'is-active' : ''}`}
-                onClick={() => setDatePreset('today')}
+                onClick={() => {
+                  setDatePreset('today');
+                  setDateFrom('');
+                  setDateTo('');
+                }}
               >
                 Сегодня
               </button>
@@ -653,7 +766,11 @@ const Tasks = () => {
               <button
                 type="button"
                 className={`date-pill ${datePreset === 'tomorrow' ? 'is-active' : ''}`}
-                onClick={() => setDatePreset('tomorrow')}
+                onClick={() => {
+                  setDatePreset('tomorrow');
+                  setDateFrom('');
+                  setDateTo('');
+                }}
               >
                 Завтра
               </button>
@@ -661,11 +778,16 @@ const Tasks = () => {
               <button
                 type="button"
                 className={`date-pill ${datePreset === 'week' ? 'is-active' : ''}`}
-                onClick={() => setDatePreset('week')}
+                onClick={() => {
+                  setDatePreset('week');
+                  setDateFrom('');
+                  setDateTo('');
+                }}
               >
                 Неделя
               </button>
             </div>
+          </div>
           </div>
         </div>
 

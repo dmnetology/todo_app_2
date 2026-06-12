@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from app.ml.predictor import predict_task_duration
+import pandas as pd
 
 
 def test_predict_task_duration_fallback_without_active_model(monkeypatch):
@@ -80,15 +81,17 @@ def test_predict_task_duration_ml_success(monkeypatch):
     assert result.metadata == {"mae": 18}
     assert result.confidence == 0.9
 
-    assert fake_model.received_features == [
-        {
+    expected_df = pd.DataFrame(
+        [{
             "title": "my task",
             "category_id": 5,
             "priority": "high",
             "planned_weekday": 2,
             "planned_hour": 14,
-        }
-    ]
+        }]
+    )
+
+    pd.testing.assert_frame_equal(fake_model.received_features, expected_df)
 
 
 def test_predict_task_duration_ml_duration_minimum(monkeypatch):

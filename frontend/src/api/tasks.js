@@ -4,17 +4,18 @@ export async function getTasks(params = {}) {
   const query = new URLSearchParams();
 
   const allowedParams = [
-    'skip',
-    'limit',
-    'status',
-    'category_id',
-    'title',
-    'date_preset',
-    'planned_start_from',
-    'planned_start_to',
-    'sort_by',
-    'sort_order',
-  ];
+  'skip',
+  'limit',
+  'status',
+  'category_id',
+  'title',
+  'date_preset',
+  'planned_start_from',
+  'planned_start_to',
+  'planned_start_timezone',
+  'sort_by',
+  'sort_order',
+];
 
   allowedParams.forEach((key) => {
     if (params[key] !== undefined && params[key] !== null && params[key] !== '') {

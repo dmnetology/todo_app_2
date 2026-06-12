@@ -110,6 +110,9 @@
   --social-bg: var(--color-social-bg);
 
     /* Tasks compatibility aliases */
+  --tasks-result-count-bg: rgba(170, 59, 255, 0.08);
+  --tasks-result-count-text: var(--color-primary);
+  --tasks-result-count-border: rgba(170, 59, 255, 0.18);
   --tasks-accent: var(--color-primary);
   --tasks-accent-border: var(--color-primary-border);
   --tasks-surface: var(--color-surface);
@@ -311,6 +314,9 @@
   --social-bg: var(--color-social-bg);
 
     /* Tasks compatibility aliases */
+  --tasks-result-count-bg: rgba(192, 132, 252, 0.12);
+  --tasks-result-count-text: #d9ccff;
+  --tasks-result-count-border: rgba(192, 132, 252, 0.22);
   --tasks-accent: var(--color-primary);
   --tasks-accent-border: var(--color-primary-border);
   --tasks-surface: var(--color-surface);
