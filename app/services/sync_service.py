@@ -17,20 +17,52 @@ from app.services.task_service import create_task_from_import
 
 
 def _dt(value: Any) -> datetime | None:
+    """
+    Преобразует входное значение в объект datetime.
+    Поддерживает ISO-формат строки (с 'Z' для UTC).
+
+    Args:
+        value: Входное значение, которое может быть None, пустой строкой,
+               объектом datetime или строкой в ISO-формате.
+
+    Returns:
+        Объект `datetime` в UTC или `None`, если входное значение пустое.
+    """
     if value is None or value == "":
         return None
     if isinstance(value, datetime):
         return value
+    # Заменяем 'Z' на '+00:00' для корректного парсинга ISO-формата с ZoneInfo
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 def _priority(value: Any) -> TaskPriority:
+    """
+    Преобразует входное значение в перечисление `TaskPriority`.
+
+    Args:
+        value: Входное значение, которое может быть объектом `TaskPriority`
+               или строковым представлением приоритета.
+
+    Returns:
+        Объект `TaskPriority`.
+    """
     if isinstance(value, TaskPriority):
         return value
     return TaskPriority(str(value))
 
 
 def _status(value: Any) -> TaskStatus:
+    """
+    Преобразует входное значение в перечисление `TaskStatus`.
+
+    Args:
+        value: Входное значение, которое может быть объектом `TaskStatus`
+               или строковым представлением статуса.
+
+    Returns:
+        Объект `TaskStatus`.
+    """
     if isinstance(value, TaskStatus):
         return value
     return TaskStatus(str(value))
@@ -47,12 +79,30 @@ def _validate_task_row(
     actual_started_at: datetime | None,
     completed_at: datetime | None,
 ) -> None:
+    """
+    Выполняет валидацию данных одной строки задачи перед импортом.
+
+    Args:
+        title: Название задачи.
+        category_id: ID категории задачи.
+        priority: Приоритет задачи.
+        status: Статус задачи.
+        planned_start_local: Планируемое локальное время начала задачи.
+        planned_start_timezone: Часовой пояс для `planned_start_local`.
+        actual_started_at: Фактическое время начала задачи.
+        completed_at: Время завершения задачи.
+
+    Raises:
+        ValueError: Если данные задачи не соответствуют правилам валидации
+                    (например, отсутствуют обязательные поля, некорректный статус,
+                    противоречия во временах для разных статусов).
+    """
     if not title:
         raise ValueError("title is required")
 
     if status is None:
         raise ValueError("status is required")
-
+    # Проверка на поддерживаемые статусы для импорта
     if status not in {
         TaskStatus.new,
         TaskStatus.in_progress,
@@ -91,13 +141,26 @@ def _validate_task_row(
 
 
 def export_json(db: Session, user) -> dict:
+    """
+    Экспортирует все категории и задачи пользователя в JSON-формате.
+
+    Args:
+        db: Сессия базы данных.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Словарь, представляющий экспортированные данные в формате
+        `SyncJsonExport`, готовый для сериализации в JSON.
+    """
+
+    # Получаем все категории, принадлежащие пользователю
     categories = (
         db.query(Category)
         .filter(Category.user_id == user.id)
         .order_by(Category.id.asc())
         .all()
     )
-
+    # Получаем все задачи, принадлежащие пользователю
     tasks = (
         db.query(Task)
         .filter(Task.owner_id == user.id)
@@ -105,6 +168,7 @@ def export_json(db: Session, user) -> dict:
         .all()
     )
 
+    # Формируем объект SyncJsonExport
     payload = SyncJsonExport(
         categories=[
             {
@@ -137,10 +201,30 @@ def export_json(db: Session, user) -> dict:
         ],
     )
 
+    # Возвращаем данные, преобразованные в словарь, соответствующий JSON
     return payload.model_dump(mode="json")
 
 
 def import_json(db: Session, user, data: dict) -> SyncImportResult:
+    """
+    Импортирует задачи из JSON-данных в базу данных пользователя.
+
+    Валидирует входные данные JSON с помощью Pydantic и затем создает
+    задачи, используя `create_task_from_import`. Обрабатывает пропущенные
+    задачи и собирает информацию о проблемах.
+
+    Args:
+        db: Сессия базы данных.
+        user: Объект текущего пользователя.
+        data: Входные JSON-данные в виде словаря.
+
+    Returns:
+        Объект `SyncImportResult`, содержащий статистику и проблемы импорта.
+
+    Raises:
+        ValueError: Если JSON-данные не соответствуют схеме `SyncJsonImport`
+                    или возникают другие ошибки в процессе импорта.
+    """
     try:
         payload = SyncJsonImport.model_validate(data)
     except ValidationError as exc:
@@ -247,6 +331,18 @@ def import_json(db: Session, user, data: dict) -> SyncImportResult:
 
 
 def export_csv(db: Session, user) -> tuple[str, str]:
+    """
+    Экспортирует все категории и задачи пользователя в CSV-формате.
+
+    Возвращает две строки: одна для категорий, другая для задач.
+
+    Args:
+        db: Сессия базы данных.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Кортеж из двух строк: (CSV-данные категорий, CSV-данные задач).
+    """
     categories = (
         db.query(Category)
         .filter(Category.user_id == user.id)
@@ -324,6 +420,24 @@ def export_csv(db: Session, user) -> tuple[str, str]:
 
 
 def import_csv(db: Session, user, tasks_csv: str) -> SyncImportResult:
+    """
+    Импортирует задачи из CSV-строки в базу данных пользователя.
+
+    Парсит CSV-данные, валидирует каждую строку и создает задачи,
+    используя `create_task_from_import`.
+
+    Args:
+        db: Сессия базы данных.
+        user: Объект текущего пользователя.
+        tasks_csv: Строка, содержащая CSV-данные задач.
+
+    Returns:
+        Объект `SyncImportResult`, содержащий статистику и проблемы импорта.
+
+    Raises:
+        Exception: В случае любой непредвиденной ошибки в процессе импорта,
+                   изменения будут откачены.
+    """
     result = SyncImportResult()
 
     try:
