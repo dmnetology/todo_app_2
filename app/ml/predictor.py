@@ -19,6 +19,12 @@ import pandas as pd
 
 @dataclass
 class PredictionResult:
+    """
+    Класс для хранения результата предсказания длительности задачи.
+
+    Содержит предсказанную длительность, источник предсказания (ML-модель или fallback),
+    а также дополнительную информацию о модели и уверенности.
+    """
     duration_minutes: int
     source: str  # "ml" or "fallback"
     model_type: str | None = None
@@ -37,17 +43,37 @@ def predict_task_duration(
     planned_hour: int | None = None,
 ) -> PredictionResult:
     """
-    Возвращает предсказанную длительность задачи.
+    Предсказывает длительность задачи, используя ML-модель или fallback-логику.
 
-    Логика:
-    1) Пытаемся взять активную ML-модель пользователя
-    2) Если она есть и успешно предсказывает — используем её
-    3) Если модели нет или произошла ошибка — fallback
+    Процесс предсказания:
+    1.  Пытается найти активную ML-модель для данного пользователя.
+    2.  Если активная модель найдена, загружает её артефакты и делает предсказание.
+        -   В случае успеха возвращает результат ML-модели.
+        -   В случае любой ошибки (проблемы с загрузкой, предсказанием)
+            переключается на fallback-логику.
+    3.  Если активной модели нет или произошла ошибка при её использовании,
+        использует fallback-логику для получения предсказания.
+
+    Args:
+        db: Сессия базы данных.
+        user_id: Идентификатор пользователя.
+        title: Название задачи.
+        category_id: Идентификатор категории задачи.
+        priority: Приоритет задачи.
+        planned_weekday: День недели планируемого выполнения (0=понедельник, 6=воскресенье).
+        planned_hour: Час дня планируемого выполнения (0-23).
+
+    Returns:
+        Объект `PredictionResult`, содержащий предсказанную длительность
+        и информацию об источнике предсказания.
     """
+
+    # Пытаемся получить запись об активной ML-модели для пользователя.
     ml_record = get_active_ml_model_record(db, user_id)
 
     print(f"[PREDICT] user_id={user_id} ml_record={bool(ml_record)}")
 
+    # Если активной ML-модели нет, используем fallback.
     if not ml_record:
         duration = fallback_predict_task_duration(
             db=db,
@@ -61,9 +87,13 @@ def predict_task_duration(
             source="fallback",
         )
 
+    # Если активная ML-модель есть, пытаемся использовать её.
     try:
+        # Загружаем модель и её метаданные с диска.
         model, metadata = load_model_artifacts(user_id)
 
+        # Подготавливаем признаки для предсказания.
+        # Нормализация title должна быть такой же, как при обучении модели.
         features = {
             "title": " ".join((title or "").strip().lower().split()),
             "category_id": category_id,
@@ -72,14 +102,19 @@ def predict_task_duration(
             "planned_hour": planned_hour,
         }
 
+        # Преобразуем признаки в DataFrame, как это ожидается пайплайном Scikit-learn.
         features_df = pd.DataFrame([features])
         prediction = model.predict(features_df)[0]
         duration = int(round(float(prediction)))
         print(duration)
 
+        # Длительность не может быть меньше 1 минуты.
         if duration < 1:
             duration = 1
 
+        # Расчет "уверенности" предсказания на основе MAE модели.
+        # MAE 180 (3 часа) считается низким уровнем уверенности,
+        # чем ниже MAE, тем выше уверенность.
         confidence = None
         if metadata and "mae" in metadata:
             mae = metadata["mae"]
@@ -98,6 +133,8 @@ def predict_task_duration(
         )
 
     except Exception as exc:
+        # В случае любой ошибки при работе с ML-моделью, логируем ошибку
+        # и переключаемся на fallback-логику.
         print(f"[PREDICT] exception_type={type(exc).__name__}")
         print(f"[PREDICT] exception_repr={repr(exc)}")
         print("[PREDICT] traceback:")

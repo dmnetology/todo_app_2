@@ -18,6 +18,18 @@ def export_json_route(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """
+    Экспортирует данные пользователя в JSON-формате.
+
+    Включает в себя задачи и категории.
+
+    Args:
+        db: Активная сессия базы данных.
+        user: Текущий авторизованный пользователь.
+
+    Returns:
+        JSON-структура с данными для экспорта.
+    """
     return export_json(db, user)
 
 
@@ -27,6 +39,24 @@ async def import_json_route(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """
+    Импортирует данные пользователя из JSON-файла.
+
+    Файл сначала читается и парсится как JSON, затем передаётся
+    в сервисный слой для валидации и записи в базу данных.
+
+    Обработка ошибок разделена на два этапа:
+    - ошибка чтения/парсинга файла -> 400 Bad Request;
+    - ошибка валидации данных -> 422 Unprocessable Entity.
+
+    Args:
+        file: Загружаемый JSON-файл.
+        db: Активная сессия базы данных.
+        user: Текущий авторизованный пользователь.
+
+    Returns:
+        Результат импорта.
+    """
     try:
         content = await file.read()
         payload = json.loads(content.decode("utf-8"))
@@ -43,7 +73,8 @@ async def import_json_route(
         detail = exc.args[0] if exc.args else str(exc)
 
         if isinstance(detail, dict):
-            # Дополнительно подстрахуемся: приводим errors к JSON-safe виду
+            # Приводим ошибки в JSON-safe вид,
+            # чтобы FastAPI/JSONResponse не упали на tuple, datetime и т.п.
             errors = detail.get("errors", [])
             safe_errors = []
 
@@ -83,6 +114,20 @@ def export_csv_route(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """
+    Экспортирует данные пользователя в CSV-формате.
+
+    Возвращаются две отдельные CSV-строки:
+    - categories_csv для категорий;
+    - tasks_csv для задач.
+
+    Args:
+        db: Активная сессия базы данных.
+        user: Текущий авторизованный пользователь.
+
+    Returns:
+        Словарь с CSV-строками для категорий и задач.
+    """
     categories_csv, tasks_csv = export_csv(db, user)
     return {
         "categories_csv": categories_csv,
@@ -96,6 +141,19 @@ async def import_csv_route(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    """
+    Импортирует данные пользователя из CSV-файла.
+
+    Ожидается строковое содержимое CSV.
+
+    Args:
+        file: Загружаемый CSV-файл.
+        db: Активная сессия базы данных.
+        user: Текущий авторизованный пользователь.
+
+    Returns:
+        Результат импорта.
+    """
     try:
         tasks_csv = (await file.read()).decode("utf-8")
     except Exception:

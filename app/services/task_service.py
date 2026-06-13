@@ -27,6 +27,17 @@ def validate_category_owner(
     category_id: int | None,
     user_id: int,
 ) -> None:
+    """
+    Проверяет, существует ли указанная категория и принадлежит ли она текущему пользователю.
+
+    Args:
+        db: Сессия базы данных.
+        category_id: ID категории для проверки. Если None, проверка не выполняется.
+        user_id: ID пользователя, которому должна принадлежать категория.
+
+    Raises:
+        HTTPException: Если категория не найдена или не принадлежит пользователю (404 Not Found).
+    """
     if category_id is None:
         return
 
@@ -43,6 +54,16 @@ def validate_category_owner(
 
 
 def _local_to_utc(dt: datetime | None, timezone_name: str | None) -> datetime | None:
+    """
+    Преобразует локальное время в UTC, учитывая указанный часовой пояс.
+
+    Args:
+        dt: Объект datetime в локальном времени (может быть наивным или с tzinfo).
+        timezone_name: Название часового пояса (например, 'America/New_York').
+
+    Returns:
+        Объект datetime в UTC или None, если входные данные неполны.
+    """
     if dt is None:
         return None
     if not timezone_name:
@@ -59,10 +80,22 @@ def _local_to_utc(dt: datetime | None, timezone_name: str | None) -> datetime | 
 
 
 def _get_now() -> datetime:
+    """
+    Возвращает текущее время в UTC.
+    """
     return datetime.now(timezone.utc)
 
 
 def _ensure_utc(dt: datetime | None) -> datetime | None:
+    """
+    Приводит datetime объект к UTC.
+
+    Args:
+        dt: Объект datetime.
+
+    Returns:
+        Объект datetime в UTC или None.
+    """
     if dt is None:
         return None
     if dt.tzinfo is None:
@@ -71,24 +104,39 @@ def _ensure_utc(dt: datetime | None) -> datetime | None:
 
 
 def _recalculate_actual_minutes(task: Task) -> None:
+    """
+    Пересчитывает фактическую длительность выполнения задачи в минутах,
+    вычитая время, проведенное в паузах. Результат записывается в `task.actual_minutes`.
+
+    Args:
+        task: Объект задачи, для которого нужно пересчитать длительность.
+
+    Raises:
+        ValueError: Если отсутствуют необходимые поля `actual_started_at`
+                    или `completed_at`/`current_started_at`.
+    """
     if task.actual_started_at is None:
         raise ValueError("actual_started_at is required for completed task")
 
+    # Конечная точка для расчета (время завершения или последнее время начала, если не завершена).
     end_time = task.completed_at or task.current_started_at
     if end_time is None:
         raise ValueError("end_time is required for completed task")
 
+    # Приводим все времена к UTC для корректных расчетов.
     started_at = _ensure_utc(task.actual_started_at)
     end_time = _ensure_utc(end_time)
 
     if started_at is None or end_time is None:
         raise ValueError("Invalid datetime values for actual minutes calculation")
 
+    # Общая длительность от начала до конца (включая паузы).
     total_seconds = int((end_time - started_at).total_seconds())
 
     pauses = task.pauses or []
     paused_seconds = 0
 
+    # Суммируем длительность всех пауз.
     for pause in pauses:
         pause_started_at = _ensure_utc(pause.paused_at)
         pause_end = _ensure_utc(pause.resumed_at or end_time)
@@ -96,10 +144,13 @@ def _recalculate_actual_minutes(task: Task) -> None:
         if pause_started_at and pause_end and pause_end > pause_started_at:
             paused_seconds += int((pause_end - pause_started_at).total_seconds())
 
+    # Эффективное время выполнения = Общее время - Время пауз.
     effective_seconds = max(total_seconds - paused_seconds, 0)
     task.actual_minutes = max(effective_seconds // 60, 1) if effective_seconds > 0 else 0
 
 
+# Вспомогательные функции для работы с датами и временем в UTC для фильтрации.
+# Все они возвращают datetime в UTC.
 def _start_of_day_utc(now: datetime) -> datetime:
     return now.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -121,6 +172,7 @@ def _start_of_day_after_tomorrow_utc(now: datetime) -> datetime:
 
 
 def _next_monday_utc(now: datetime) -> datetime:
+    """Возвращает начало ближайшего понедельника (включая текущий день, если это понедельник) в UTC."""
     start_today = _start_of_day_utc(now)
     days_until_monday = (7 - start_today.weekday()) % 7
     if days_until_monday == 0:
@@ -143,6 +195,22 @@ def _apply_date_filter(
     planned_start_to: datetime | None,
     planned_start_timezone: str | None,
 ):
+    """
+    Применяет фильтры по дате к запросу задач.
+
+    Может фильтровать по предопределенным диапазонам дат (preset)
+    или по пользовательским диапазонам `planned_start_from`/`planned_start_to`.
+
+    Args:
+        query: Объект запроса SQLAlchemy.
+        date_preset: Предопределенный диапазон дат (например, "today", "week").
+        planned_start_from: Начало пользовательского диапазона дат.
+        planned_start_to: Конец пользовательского диапазона дат.
+        planned_start_timezone: Часовой пояс для пользовательских диапазонов.
+
+    Returns:
+        Объект запроса SQLAlchemy с примененными фильтрами.
+    """
     now = _get_now()
 
     if date_preset and date_preset != TaskDatePreset.all:
@@ -171,6 +239,7 @@ def _apply_date_filter(
         if date_preset in preset_filters:
             query = query.filter(*preset_filters[date_preset])
 
+    # Применяем пользовательские фильтры по датам, если они заданы.
     if planned_start_from is not None:
         planned_start_from_utc = _local_to_utc(planned_start_from, planned_start_timezone)
         if planned_start_from_utc is not None:
@@ -185,6 +254,17 @@ def _apply_date_filter(
 
 
 def _apply_sorting(query, sort_by: TaskSortBy | None, sort_order: SortOrder | None):
+    """
+    Применяет сортировку к запросу задач.
+
+    Args:
+        query: Объект запроса SQLAlchemy.
+        sort_by: Поле, по которому осуществляется сортировка.
+        sort_order: Порядок сортировки (возрастающий или убывающий).
+
+    Returns:
+        Объект запроса SQLAlchemy с примененной сортировкой.
+    """
     direction_desc = sort_order != SortOrder.asc
 
     sort_map = {
@@ -205,8 +285,25 @@ def _apply_sorting(query, sort_by: TaskSortBy | None, sort_order: SortOrder | No
 
 
 def create_task(db: Session, data: TaskCreate, user: User) -> Task:
+    """
+    Создает новую задачу в базе данных.
+
+    Перед созданием задачи:
+    - Проверяет принадлежность категории пользователю.
+    - Использует ML-модель для предсказания оценочной длительности задачи.
+    - Преобразует локальные даты в UTC.
+
+    Args:
+        db: Сессия базы данных.
+        data: Pydantic модель с данными для создания задачи.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Созданный объект задачи из базы данных.
+    """
     validate_category_owner(db, data.category_id, user.id)
 
+    # Предсказываем длительность задачи с помощью ML-модели.
     prediction = predict_task_duration(
         db=db,
         user_id=user.id,
@@ -263,6 +360,28 @@ def get_tasks(
     sort_by: TaskSortBy | None = None,
     sort_order: SortOrder | None = None,
 ) -> dict:
+    """
+    Получает список задач для пользователя с возможностью фильтрации и пагинации.
+
+    Args:
+        db: Сессия базы данных.
+        user: Объект текущего пользователя.
+        skip: Количество пропускаемых записей (для пагинации).
+        limit: Максимальное количество возвращаемых записей (для пагинации).
+        status_filter: Фильтр по статусу задачи.
+        category_id: Фильтр по ID категории.
+        title: Фильтр по названию задачи (частичное совпадение без учета регистра).
+        date_preset: Предопределенный фильтр по дате (например, "today", "week").
+        planned_start_from: Пользовательский фильтр: задачи, запланированные не ранее этой даты.
+        planned_start_to: Пользовательский фильтр: задачи, запланированные не позднее этой даты.
+        planned_start_timezone: Часовой пояс для `planned_start_from`/`planned_start_to`.
+        sort_by: Поле для сортировки.
+        sort_order: Порядок сортировки (asc/desc).
+
+    Returns:
+        Словарь с отфильтрованными и отсортированными задачами, общим количеством,
+        смещением и лимитом.
+    """
     query = db.query(Task).filter(Task.owner_id == user.id)
 
     if status_filter is not None and status_filter != TaskStatusFilter.all:
@@ -300,6 +419,20 @@ def get_tasks(
 
 
 def get_task_by_id(db: Session, task_id: int, user: User) -> Task:
+    """
+    Получает задачу по ее ID, принадлежащую текущему пользователю.
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID задачи.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Объект задачи.
+
+    Raises:
+        HTTPException: Если задача не найдена или не принадлежит пользователю (404 Not Found).
+    """
     task = db.query(Task).filter(
         Task.id == task_id,
         Task.owner_id == user.id,
@@ -320,6 +453,18 @@ def update_task(
     data: TaskUpdate,
     user: User,
 ) -> Task:
+    """
+    Обновляет существующую задачу.
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID обновляемой задачи.
+        data: Pydantic модель с данными для обновления задачи.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Обновленный объект задачи.
+    """
     task = get_task_by_id(db, task_id, user)
 
     update_data = data.model_dump(exclude_unset=True)
@@ -345,12 +490,34 @@ def update_task(
 
 
 def delete_task(db: Session, task_id: int, user: User) -> None:
+    """
+    Удаляет задачу.
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID удаляемой задачи.
+        user: Объект текущего пользователя.
+    """
     task = get_task_by_id(db, task_id, user)
     db.delete(task)
     db.commit()
 
 
 def start_task(db: Session, task_id: int, user: User) -> Task:
+    """
+    Переводит задачу в статус "in_progress" (начата).
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID задачи.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Обновленный объект задачи.
+
+    Raises:
+        HTTPException: Если задача уже завершена (400 Bad Request).
+    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status == TaskStatus.completed:
@@ -381,6 +548,21 @@ def pause_task(
     user: User,
     pause_reason: str | None = None,
 ) -> Task:
+    """
+    Переводит задачу в статус "paused" (приостановлена).
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID задачи.
+        user: Объект текущего пользователя.
+        pause_reason: Причина приостановки (опционально).
+
+    Returns:
+        Обновленный объект задачи.
+
+    Raises:
+        HTTPException: Если задача не находится в статусе "in_progress" (400 Bad Request).
+    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status != TaskStatus.in_progress:
@@ -409,6 +591,20 @@ def pause_task(
 
 
 def resume_task(db: Session, task_id: int, user: User) -> Task:
+    """
+    Возобновляет приостановленную задачу, переводя ее в статус "in_progress".
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID задачи.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Обновленный объект задачи.
+
+    Raises:
+        HTTPException: Если задача не находится в статусе "paused" (400 Bad Request).
+    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status != TaskStatus.paused:
@@ -441,6 +637,20 @@ def complete_task(
     task_id: int,
     user: User,
 ) -> Task:
+    """
+    Завершает задачу, переводя ее в статус "completed".
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID задачи.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Обновленный объект задачи.
+
+    Raises:
+        HTTPException: Если задача уже завершена/отменена, или не была начата (400 Bad Request).
+    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status in (TaskStatus.completed, TaskStatus.cancelled):
@@ -471,6 +681,20 @@ def complete_task(
 
 
 def cancel_task(db: Session, task_id: int, user: User) -> Task:
+    """
+    Отменяет задачу, переводя ее в статус "cancelled".
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID задачи.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Обновленный объект задачи.
+
+    Raises:
+        HTTPException: Если задача уже завершена (400 Bad Request).
+    """
     task = get_task_by_id(db, task_id, user)
 
     if task.status == TaskStatus.completed:
@@ -495,6 +719,24 @@ def update_task_status(
     data: TaskStatusUpdate,
     user: User,
 ) -> Task:
+    """
+    Обновляет статус задачи, используя соответствующие функции сервиса.
+
+    Эта функция служит для изменения статуса задачи,
+    делегируя логику специализированным функциям (`start_task`, `pause_task` и т.д.).
+
+    Args:
+        db: Сессия базы данных.
+        task_id: ID задачи.
+        data: Pydantic модель с новым статусом задачи.
+        user: Объект текущего пользователя.
+
+    Returns:
+        Обновленный объект задачи.
+
+    Raises:
+        HTTPException: Если запрошен неподдерживаемый статус (400 Bad Request).
+    """
     if data.status == TaskStatus.new:
         task = get_task_by_id(db, task_id, user)
         task.status = TaskStatus.new
@@ -538,6 +780,33 @@ def create_task_from_import(
     completed_at: datetime | None = None,
     is_completed: bool | None = None,
 ) -> Task:
+    """
+    Создает задачу из импортированных данных.
+
+    Эта функция отличается от `create_task` тем, что позволяет задать начальный статус
+    и времена начала/завершения для уже произошедших событий (импорт исторических данных).
+
+    Args:
+        db: Сессия базы данных.
+        user: Объект текущего пользователя.
+        title: Название задачи.
+        description: Описание задачи.
+        category_id: ID категории.
+        priority: Приоритет.
+        due_date: Дата дедлайна.
+        planned_start_local: Планируемое локальное время начала.
+        planned_start_timezone: Часовой пояс для `planned_start_local`.
+        status: Начальный статус задачи при импорте.
+        actual_started_at: Фактическое время начала (для импорта завершенных/в процессе задач).
+        completed_at: Время завершения (для импорта завершенных задач).
+        is_completed: Флаг завершения (возможно, избыточен, т.к. выводится из `status`).
+
+    Returns:
+        Созданный объект задачи.
+
+    Raises:
+        ValueError: Если указан неподдерживаемый статус для импорта.
+    """
     validate_category_owner(db, category_id, user.id)
 
     planned_start_at_utc = _local_to_utc(planned_start_local, planned_start_timezone)

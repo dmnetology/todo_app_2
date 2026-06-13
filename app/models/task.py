@@ -19,12 +19,20 @@ from app.db.database import Base
 
 
 class TaskPriority(str, Enum):
+    """
+    Перечисление для определения приоритета задачи.
+    Используется для стандартизации возможных значений приоритета.
+    """
     low = "low"
     medium = "medium"
     high = "high"
 
 
 class TaskStatus(str, Enum):
+    """
+    Перечисление для определения статуса задачи.
+    Отслеживает текущее состояние задачи в её жизненном цикле.
+    """
     new = "new"
     in_progress = "in_progress"
     paused = "paused"
@@ -33,6 +41,13 @@ class TaskStatus(str, Enum):
 
 
 class Task(Base):
+    """
+    Модель SQLAlchemy для представления задач в базе данных.
+
+    Содержит информацию о названии, описании, статусе, приоритете,
+    планируемом и фактическом времени выполнения, а также связи с
+    пользователем-владельцем и категорией.
+    """
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -62,6 +77,11 @@ class Task(Base):
         server_default=func.now(),
     )
 
+    # --- Поля для планируемого времени начала задачи ---
+    # `planned_start_local` и `planned_start_timezone` позволяют хранить локальное время
+    # и часовой пояс пользователя, в котором он планировал начать задачу.
+    # `planned_start_at_utc` - это та же дата и время, но преобразованная в UTC,
+    # для удобства сравнений и работы с ML-моделью.
     planned_start_local: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=False),
         nullable=True,
@@ -72,11 +92,14 @@ class Task(Base):
         nullable=True,
     )
 
+    # --- Поля для фактического времени выполнения задачи ---
     actual_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     current_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # Оценочная длительность задачи в минутах.
     estimated_minutes: Mapped[int | None] = mapped_column(Integer, default=0, nullable=False)
+    # Фактическая длительность задачи в минутах.
     actual_minutes: Mapped[int | None] = mapped_column(Integer, default=0, nullable=False)
 
     owner_id: Mapped[int] = mapped_column(
@@ -89,6 +112,7 @@ class Task(Base):
         nullable=True,
     )
 
+    # --- Определения связей (Relationships) ---
     owner = relationship("User", back_populates="tasks")
     category = relationship("Category", back_populates="tasks")
     pauses = relationship(

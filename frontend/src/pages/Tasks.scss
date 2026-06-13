@@ -182,6 +182,13 @@
   gap: 12px;
 }
 
+.tasks-table-section__title {
+  margin: 12px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--tasks-text);
+}
+
 .tasks-table-section__title-row {
   display: flex;
   align-items: flex-start;
@@ -212,13 +219,6 @@
   line-height: 1;
   white-space: nowrap;
   flex: 0 0 auto;
-}
-
-.tasks-table-section__title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--tasks-text);
 }
 
 .tasks-table-section__date-pills {

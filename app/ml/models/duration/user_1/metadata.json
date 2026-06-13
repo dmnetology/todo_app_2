@@ -1,9 +1,9 @@
 {
   "user_id": 1,
-  "trained_at": "2026-06-09T14:32:55.164389+00:00",
-  "samples_count": 53,
-  "mae": 6.338071371238824,
-  "fallback_mae": 6.90566037735849,
+  "trained_at": "2026-06-13T07:03:38.625326+00:00",
+  "samples_count": 67,
+  "mae": 6.144955983071655,
+  "fallback_mae": 7.746268656716418,
   "accepted": true,
   "model_type": "random_forest_regressor",
   "features": [
@@ -16,7 +16,7 @@
   "comparison": {
     "better_than_fallback": true,
     "better_than_current": true,
-    "current_active_model_id": null,
-    "current_active_model_mae": null
+    "current_active_model_id": 1,
+    "current_active_model_mae": 6.338071371238824
   }
 }
